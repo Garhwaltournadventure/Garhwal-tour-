@@ -5,21 +5,6 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-export interface HealthStatus {
-  status: string;
-}
-
-export interface Review {
-  id: number;
-  name: string;
-  /**
-     * @minimum 1
-     * @maximum 5
-     */
-  rating: number;
-  comment: string;
-  createdAt: string;
-}
 
 export interface ReviewInput {
   /**
@@ -38,8 +23,3 @@ export interface ReviewInput {
      */
   comment: string;
 }
-
-export interface ErrorResponse {
-  error: string;
-}
-

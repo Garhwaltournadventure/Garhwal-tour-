@@ -1,10 +1,5 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ErrorBoundary } from '@/components/error-boundary';
-import { Toaster } from '@/components/ui/toaster';
-import { TooltipProvider } from '@/components/ui/tooltip';
-import NotFound from '@/pages/not-found';
-import { Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 import {
   ArrowDownRight,
   ArrowRight,
@@ -14,91 +9,241 @@ import {
   ChevronDown,
   Compass,
   Instagram,
+  Languages,
   Menu,
   MessageCircle,
   Mountain,
   Phone,
   Send,
   Sparkles,
-  TentTree,
+  Star,
   Waves,
   X,
 } from 'lucide-react';
+import {
+  getListReviewsQueryKey,
+  useCreateReview,
+  useListReviews,
+} from '@workspace/api-client-react';
+import { ErrorBoundary } from '@/components/error-boundary';
+import { Toaster } from '@/components/ui/toaster';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import NotFound from '@/pages/not-found';
+import { Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 
 const queryClient = new QueryClient();
 const WHATSAPP_NUMBER = '918077016559';
+
+type LanguageCode =
+  | 'en'
+  | 'hi'
+  | 'bn'
+  | 'mr'
+  | 'gu'
+  | 'pa'
+  | 'ta'
+  | 'te'
+  | 'kn'
+  | 'ml';
+
+const languageOptions: { code: LanguageCode; label: string; native: string }[] = [
+  { code: 'en', label: 'English', native: 'English' },
+  { code: 'hi', label: 'Hindi', native: 'हिन्दी' },
+  { code: 'bn', label: 'Bengali', native: 'বাংলা' },
+  { code: 'mr', label: 'Marathi', native: 'मराठी' },
+  { code: 'gu', label: 'Gujarati', native: 'ગુજરાતી' },
+  { code: 'pa', label: 'Punjabi', native: 'ਪੰਜਾਬੀ' },
+  { code: 'ta', label: 'Tamil', native: 'தமிழ்' },
+  { code: 'te', label: 'Telugu', native: 'తెలుగు' },
+  { code: 'kn', label: 'Kannada', native: 'ಕನ್ನಡ' },
+  { code: 'ml', label: 'Malayalam', native: 'മലയാളം' },
+];
+
+const detectLanguage = (): LanguageCode => {
+  if (typeof navigator === 'undefined') return 'en';
+  const supported = new Set(languageOptions.map((option) => option.code));
+  for (const locale of navigator.languages.length ? navigator.languages : [navigator.language]) {
+    const code = locale.toLowerCase().split('-')[0] as LanguageCode;
+    if (supported.has(code)) return code;
+  }
+  return 'en';
+};
+
+type Copy = {
+  nav: { services: string; routes: string; reviews: string; plan: string };
+  hero: { eyebrow: string; title: string; accent: string; description: string; primary: string; secondary: string };
+  services: { kicker: string; title: string; accent: string; description: string; enquire: string };
+  routes: { kicker: string; title: string; accent: string; description: string; action: string };
+  reviews: { kicker: string; title: string; accent: string; description: string; formTitle: string; name: string; rating: string; comment: string; submit: string; success: string; empty: string };
+  enquiry: { kicker: string; title: string; accent: string; description: string; formTitle: string; name: string; dates: string; group: string; interest: string; note: string; submit: string };
+};
+
+type DeepPartial<T> = {
+  [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K];
+};
+
+const baseCopy: Copy = {
+  nav: { services: 'Ways to go', routes: 'Route notes', reviews: 'Reviews', plan: 'Plan a trip' },
+  hero: {
+    eyebrow: 'Local roads. Wider days.',
+    title: 'Go where',
+    accent: 'the road',
+    description: 'Personal Uttarakhand journeys with a local hand on the wheel. Tours, rentals, rafting and room to change your mind.',
+    primary: 'Plan with Mangal',
+    secondary: 'See route ideas',
+  },
+  services: {
+    kicker: '01 / Ways to go',
+    title: 'Bring the idea.',
+    accent: 'We’ll find the way.',
+    description: 'Some travellers arrive with a full route. Some just know they want mountain air. Both are a good place to start.',
+    enquire: 'Tell us what you have in mind',
+  },
+  routes: {
+    kicker: '02 / Route notes',
+    title: 'A few good',
+    accent: 'places to begin.',
+    description: 'Starting points, not packages. Tell us what you want more of, and what you want to skip.',
+    action: 'Shape this route',
+  },
+  reviews: {
+    kicker: '03 / Traveller notes',
+    title: 'Good trips',
+    accent: 'stay with you.',
+    description: 'Have you travelled with Garhwal Tour N Adventure? Share a note for the next traveller.',
+    formTitle: 'Leave a review',
+    name: 'Your name',
+    rating: 'Your rating',
+    comment: 'Your experience',
+    submit: 'Post review',
+    success: 'Thank you for sharing your experience.',
+    empty: 'Be the first traveller to share a note.',
+  },
+  enquiry: {
+    kicker: '04 / Your turn',
+    title: 'Let’s put',
+    accent: 'a route together.',
+    description: 'Send a few details. Your message opens WhatsApp with Mangal — no account, no commitment, just a useful first conversation.',
+    formTitle: 'Where are you headed?',
+    name: 'Your name',
+    dates: 'Dates',
+    group: 'Group size',
+    interest: 'I’m interested in',
+    note: 'Anything to know?',
+    submit: 'Open WhatsApp enquiry',
+  },
+};
+
+const localizedCopy: Partial<Record<LanguageCode, DeepPartial<Copy>>> = {
+  hi: {
+    nav: { services: 'सेवाएँ', routes: 'रूट सुझाव', reviews: 'समीक्षाएँ', plan: 'यात्रा बनाएँ' },
+    hero: { eyebrow: 'स्थानीय रास्ते। बड़े दिन।', title: 'जहाँ', accent: 'रास्ता खुलता है', description: 'उत्तराखंड की व्यक्तिगत यात्राएँ — टूर, किराये की गाड़ियाँ, राफ्टिंग और आपकी पसंद के अनुसार योजना।', primary: 'मंगल के साथ योजना बनाएँ', secondary: 'रूट देखें' },
+    services: { kicker: '01 / हमारी सेवाएँ', title: 'बस विचार लाइए।', accent: 'रास्ता हम ढूँढेंगे।', description: 'पूरा रूट हो या बस पहाड़ों की हवा की इच्छा — हर यात्रा की शुरुआत यहीं से होती है।', enquire: 'पूछताछ करें' },
+    routes: { kicker: '02 / रूट सुझाव', title: 'कुछ अच्छे', accent: 'शुरुआती रास्ते।', description: 'ये पैकेज नहीं, शुरुआत के विचार हैं। अपनी पसंद हमें बताइए।', action: 'यह रूट बनाएँ' },
+    reviews: { kicker: '03 / यात्रियों की बातें', title: 'अच्छी यात्राएँ', accent: 'हमेशा साथ रहती हैं।', description: 'क्या आपने हमारे साथ यात्रा की? अगले यात्री के लिए अपना अनुभव लिखें।', formTitle: 'समीक्षा लिखें', name: 'आपका नाम', rating: 'आपकी रेटिंग', comment: 'आपका अनुभव', submit: 'समीक्षा पोस्ट करें', success: 'अपना अनुभव साझा करने के लिए धन्यवाद।', empty: 'पहली समीक्षा आप लिखें।' },
+    enquiry: { kicker: '04 / आपकी बारी', title: 'एक', accent: 'रूट साथ बनाएँ।', description: 'कुछ जानकारी भेजें। आपका संदेश मंगल के WhatsApp पर खुलेगा — बिना अकाउंट, बिना दबाव।', formTitle: 'कहाँ जाना है?', name: 'आपका नाम', dates: 'तारीखें', group: 'लोगों की संख्या', interest: 'मेरी रुचि है', note: 'कुछ और बताना है?', submit: 'WhatsApp पूछताछ खोलें' },
+  },
+  bn: { nav: { services: 'পরিষেবা', routes: 'রুট নোট', reviews: 'পর্যালোচনা', plan: 'ভ্রমণ পরিকল্পনা' }, hero: { eyebrow: 'স্থানীয় পথ। বড় দিন।', title: 'যেখানে', accent: 'পথ খুলে যায়', description: 'উত্তরাখণ্ডের ব্যক্তিগত ভ্রমণ — ট্যুর, গাড়ি ও বাইক ভাড়া, রাফটিং এবং আপনার মতো করে পরিকল্পনা।', primary: 'মঙ্গলের সাথে পরিকল্পনা করুন', secondary: 'রুট দেখুন' }, reviews: { kicker: '03 / ভ্রমণকারীর কথা', title: 'ভালো ভ্রমণ', accent: 'মনে থেকে যায়।', formTitle: 'পর্যালোচনা লিখুন', submit: 'পর্যালোচনা পোস্ট করুন', success: 'আপনার অভিজ্ঞতা শেয়ার করার জন্য ধন্যবাদ।', empty: 'প্রথম পর্যালোচনা লিখুন।' } },
+  mr: { nav: { services: 'सेवा', routes: 'मार्ग सूचना', reviews: 'अभिप्राय', plan: 'प्रवास आखणी' }, hero: { eyebrow: 'स्थानिक रस्ते. मोठे दिवस.', title: 'जिथे', accent: 'रस्ता खुलतो', description: 'उत्तराखंडमधील वैयक्तिक प्रवास — टूर, वाहन भाडे, राफ्टिंग आणि तुमच्या आवडीची आखणी.', primary: 'मंगलसोबत आखणी करा', secondary: 'मार्ग पहा' } },
+  gu: { nav: { services: 'સેવાઓ', routes: 'રૂટ સૂચનો', reviews: 'સમીક્ષાઓ', plan: 'પ્રવાસનું આયોજન' }, hero: { eyebrow: 'સ્થાનિક રસ્તા. મોટા દિવસો.', title: 'જ્યાં', accent: 'રસ્તો ખુલે', description: 'ઉત્તરાખંડની તમારી પોતાની મુસાફરી — ટૂર, કાર અને બાઇક ભાડે, રાફ્ટિંગ અને તમારી પસંદગીનું આયોજન.', primary: 'મંગલ સાથે આયોજન કરો', secondary: 'રૂટ જુઓ' } },
+  pa: { nav: { services: 'ਸੇਵਾਵਾਂ', routes: 'ਰੂਟ ਸੁਝਾਅ', reviews: 'ਸਮੀਖਿਆਵਾਂ', plan: 'ਯਾਤਰਾ ਬਣਾਓ' }, hero: { eyebrow: 'ਸਥਾਨਕ ਰਸਤੇ। ਵੱਡੇ ਦਿਨ।', title: 'ਜਿੱਥੇ', accent: 'ਰਾਹ ਖੁੱਲ੍ਹਦਾ ਹੈ', description: 'ਉੱਤਰਾਖੰਡ ਦੀਆਂ ਨਿੱਜੀ ਯਾਤਰਾਵਾਂ — ਟੂਰ, ਕਿਰਾਏ ਦੀਆਂ ਗੱਡੀਆਂ, ਰਾਫਟਿੰਗ ਅਤੇ ਤੁਹਾਡੀ ਪਸੰਦ ਅਨੁਸਾਰ ਯੋਜਨਾ।', primary: 'ਮੰਗਲ ਨਾਲ ਯੋਜਨਾ ਬਣਾਓ', secondary: 'ਰੂਟ ਵੇਖੋ' } },
+  ta: { nav: { services: 'சேவைகள்', routes: 'வழித்தட குறிப்புகள்', reviews: 'மதிப்புரைகள்', plan: 'பயணத்தைத் திட்டமிடுங்கள்' }, hero: { eyebrow: 'உள்ளூர் சாலைகள். பெரிய நாட்கள்.', title: 'சாலை', accent: 'திறக்கும் இடம்', description: 'உத்தரகண்டின் தனிப்பட்ட பயணங்கள் — சுற்றுலா, வாகன வாடகை, ராஃப்டிங் மற்றும் உங்கள் விருப்பத்திற்கேற்ற திட்டம்.', primary: 'மங்கலுடன் திட்டமிடுங்கள்', secondary: 'வழித்தடங்களைப் பாருங்கள்' } },
+  te: { nav: { services: 'సేవలు', routes: 'మార్గ సూచనలు', reviews: 'సమీక్షలు', plan: 'యాత్రను ప్లాన్ చేయండి' }, hero: { eyebrow: 'స్థానిక రహదారులు. పెద్ద రోజులు.', title: 'దారి', accent: 'తెరుచుకునే చోట', description: 'ఉత్తరాఖండ్ వ్యక్తిగత ప్రయాణాలు — టూర్లు, వాహన అద్దె, రాఫ్టింగ్ మరియు మీ ఇష్టానికి తగిన ప్రణాళిక.', primary: 'మంగళతో ప్లాన్ చేయండి', secondary: 'మార్గాలు చూడండి' } },
+  kn: { nav: { services: 'ಸೇವೆಗಳು', routes: 'ಮಾರ್ಗ ಸೂಚನೆಗಳು', reviews: 'ವಿಮರ್ಶೆಗಳು', plan: 'ಪ್ರವಾಸ ಯೋಜಿಸಿ' }, hero: { eyebrow: 'ಸ್ಥಳೀಯ ರಸ್ತೆಗಳು. ದೊಡ್ಡ ದಿನಗಳು.', title: 'ದಾರಿ', accent: 'ತೆರೆದುಕೊಳ್ಳುವಲ್ಲಿ', description: 'ಉತ್ತರಾಖಂಡದ ವೈಯಕ್ತಿಕ ಪ್ರವಾಸಗಳು — ಟೂರ್, ವಾಹನ ಬಾಡಿಗೆ, ರಾಫ್ಟಿಂಗ್ ಮತ್ತು ನಿಮ್ಮ ಇಚ್ಛೆಯಂತೆ ಯೋಜನೆ.', primary: 'ಮಂಗಲ್ ಜೊತೆ ಯೋಜಿಸಿ', secondary: 'ಮಾರ್ಗಗಳನ್ನು ನೋಡಿ' } },
+  ml: { nav: { services: 'സേവനങ്ങൾ', routes: 'റൂട്ട് കുറിപ്പുകൾ', reviews: 'അവലോകനങ്ങൾ', plan: 'യാത്ര ആസൂത്രണം ചെയ്യുക' }, hero: { eyebrow: 'പ്രാദേശിക വഴികൾ. വലിയ ദിവസങ്ങൾ.', title: 'വഴി', accent: 'തുറക്കുന്നിടത്ത്', description: 'ഉത്തരാഖണ്ഡിലെ വ്യക്തിഗത യാത്രകൾ — ടൂറുകൾ, വാഹന വാടക, റാഫ്റ്റിംഗ്, നിങ്ങളുടെ ഇഷ്ടത്തിനനുസരിച്ചുള്ള ആസൂത്രണം.', primary: 'മംഗലിനൊപ്പം ആസൂത്രണം ചെയ്യുക', secondary: 'റൂട്ടുകൾ കാണുക' } },
+};
+
+function getCopy(language: LanguageCode): Copy {
+  const override = localizedCopy[language];
+  if (!override) return baseCopy;
+  return {
+    ...baseCopy,
+    ...override,
+    nav: { ...baseCopy.nav, ...override.nav },
+    hero: { ...baseCopy.hero, ...override.hero },
+    services: { ...baseCopy.services, ...override.services },
+    routes: { ...baseCopy.routes, ...override.routes },
+    reviews: { ...baseCopy.reviews, ...override.reviews },
+    enquiry: { ...baseCopy.enquiry, ...override.enquiry },
+  };
+}
 
 const openWhatsApp = (message: string) => {
   window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
 };
 
 const services = [
-  { icon: Compass, number: '01', title: 'Uttarakhand tours', copy: 'Thoughtful routes through river towns, oak forests and high valleys — paced around your people.', tone: 'clay' },
-  { icon: CarFront, number: '02', title: 'Car rental', copy: 'A comfortable way to cover the bends, with a local driver who knows when to stop for the view.', tone: 'moss' },
-  { icon: Bike, number: '03', title: 'Bike & scooty rental', copy: 'Two wheels for easy days around Rishikesh, Mussoorie and the roads that invite a detour.', tone: 'saffron' },
-  { icon: Waves, number: '04', title: 'River rafting', copy: 'Make room for the Ganga. We will help you choose an experience that fits your season and comfort level.', tone: 'river' },
-  { icon: Sparkles, number: '05', title: 'Custom planning', copy: 'Have a loose idea? Tell us your dates, group and must-sees. We will shape the rest together.', tone: 'sky' },
+  { icon: Compass, number: '01', title: 'Uttarakhand tours', copy: 'Thoughtful routes through river towns, oak forests and high valleys.', tone: 'clay' },
+  { icon: CarFront, number: '02', title: 'Car rental', copy: 'Comfortable road days with local help on the bends and stops.', tone: 'moss' },
+  { icon: Bike, number: '03', title: 'Bike & scooty rental', copy: 'Two wheels for easy days around Rishikesh and Mussoorie.', tone: 'saffron' },
+  { icon: Waves, number: '04', title: 'River rafting', copy: 'Find a Ganga experience that fits your season and comfort level.', tone: 'river' },
+  { icon: Sparkles, number: '05', title: 'Custom planning', copy: 'Share your dates and must-sees. We will shape the rest together.', tone: 'sky' },
 ];
 
 const routes = [
-  { name: 'Rishikesh to Auli', eyebrow: 'River air → snow light', days: '5–7 days', copy: 'Start slow by the Ganga, then climb towards Joshimath and Auli for wide-open mountain days.', image: '/garhwal-hero.jpg', accent: 'clay' },
-  { name: 'Haridwar · Rishikesh · Mussoorie', eyebrow: 'A first taste of Garhwal', days: '4–6 days', copy: 'A flexible introduction: evening aarti, rafting currents and the cool, cedar-edged lanes of Mussoorie.', image: '/rishikesh-rafting.jpg', accent: 'moss' },
-  { name: 'Chopta & Panch Prayag', eyebrow: 'For the road-curious', days: '5–8 days', copy: 'Follow confluences and quiet bends towards Chopta. Add short walks, village stops or a slower morning.', image: '/garhwal-hero.jpg', accent: 'saffron' },
-  { name: 'Nainital & Jim Corbett', eyebrow: 'Lake mornings · wild edges', days: '4–6 days', copy: 'Pair the stillness of Kumaon’s lake country with a forest-side stay in the foothills.', image: '/garhwal-hero.jpg', accent: 'river' },
+  { name: 'Rishikesh to Auli', eyebrow: 'River air → snow light', days: '5–7 days', copy: 'Start by the Ganga, then climb towards Joshimath and Auli for wide-open mountain days.', image: '/garhwal-hero.jpg', accent: 'clay' },
+  { name: 'Haridwar · Rishikesh · Mussoorie', eyebrow: 'A first taste of Garhwal', days: '4–6 days', copy: 'Evening aarti, rafting currents and the cool cedar-edged lanes of Mussoorie.', image: '/rishikesh-rafting.jpg', accent: 'moss' },
+  { name: 'Chopta · Nainital · Corbett', eyebrow: 'For the road-curious', days: '5–8 days', copy: 'Mix high valley quiet, lake-country mornings and forest-side stays in one flexible route.', image: '/garhwal-hero.jpg', accent: 'saffron' },
 ];
 
-const navItems = [
-  { href: '#ways-to-go', label: 'Ways to go' },
-  { href: '#route-notes', label: 'Route notes' },
-  { href: '#why-local', label: 'Why local' },
-  { href: '#enquire', label: 'Plan a trip' },
+const navItems = (copy: Copy) => [
+  { href: '#ways-to-go', label: copy.nav.services },
+  { href: '#route-notes', label: copy.nav.routes },
+  { href: '#reviews', label: copy.nav.reviews },
+  { href: '#enquire', label: copy.nav.plan },
 ];
 
 function LogoMark() {
+  return <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#f8c75a] text-[#15322f]" aria-hidden="true"><Mountain size={22} strokeWidth={2.2} /><span className="absolute bottom-[7px] left-[10px] h-[3px] w-5 rounded-full bg-[#e75b3b]" /></span>;
+}
+
+function LanguagePicker({ language, setLanguage }: { language: LanguageCode; setLanguage: (language: LanguageCode) => void }) {
+  const [open, setOpen] = useState(false);
+  const current = languageOptions.find((option) => option.code === language) ?? languageOptions[0];
   return (
-    <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#f8c75a] text-[#15322f]" aria-hidden="true">
-      <Mountain size={22} strokeWidth={2.2} />
-      <span className="absolute bottom-[7px] left-[10px] h-[3px] w-5 rounded-full bg-[#e75b3b]" />
-    </span>
+    <div className="relative">
+      <button type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open} aria-label="Choose language" className="inline-flex items-center gap-2 rounded-full border border-white/25 px-3 py-2 text-xs font-bold text-white transition hover:border-[#f8c75a] hover:text-[#f8c75a]">
+        <Languages size={15} /><span>{current.native}</span><ChevronDown size={13} className={open ? 'rotate-180 transition' : 'transition'} />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-12 z-50 grid min-w-[170px] gap-1 rounded-2xl border border-[#d9dfd2] bg-[#fffaf0] p-2 text-[#15322f] shadow-2xl">
+          {languageOptions.map((option) => (
+            <button key={option.code} type="button" onClick={() => { setLanguage(option.code); setOpen(false); }} className={`flex items-center justify-between rounded-xl px-3 py-2 text-left text-xs font-bold transition hover:bg-[#e6eee5] ${language === option.code ? 'bg-[#f8c75a]' : ''}`}>
+              <span>{option.native}</span><span className="text-[10px] font-normal opacity-60">{option.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
 function WhatsAppButton({ children, message, className = '' }: { children: ReactNode; message: string; className?: string }) {
-  return (
-    <button
-      type="button"
-      data-testid="button-whatsapp-cta"
-      onClick={() => openWhatsApp(message)}
-      className={`inline-flex items-center justify-center gap-2 rounded-full bg-[#e75b3b] px-5 py-3 text-sm font-bold text-[#fffaf0] shadow-[0_10px_25px_rgba(231,91,59,0.22)] transition hover:-translate-y-0.5 hover:bg-[#d94f31] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#f8c75a] focus-visible:ring-offset-2 ${className}`}
-    >
-      <MessageCircle size={17} strokeWidth={2.4} />
-      {children}
-    </button>
-  );
+  return <button type="button" data-testid="button-whatsapp-cta" onClick={() => openWhatsApp(message)} className={`inline-flex items-center justify-center gap-2 rounded-full bg-[#e75b3b] px-5 py-3 text-sm font-bold text-[#fffaf0] shadow-[0_10px_25px_rgba(231,91,59,0.22)] transition hover:-translate-y-0.5 hover:bg-[#d94f31] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#f8c75a] focus-visible:ring-offset-2 ${className}`}><MessageCircle size={17} strokeWidth={2.4} />{children}</button>;
 }
 
 function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [language, setLanguage] = useState<LanguageCode>('en');
   const [trip, setTrip] = useState('');
   const [sent, setSent] = useState(false);
+  const [reviewSent, setReviewSent] = useState(false);
+  const [reviewError, setReviewError] = useState('');
+  const copy = getCopy(language);
+  const items = navItems(copy);
+  const reviewsQuery = useListReviews({ query: { queryKey: getListReviewsQueryKey(), staleTime: 1000 * 60 * 5 } });
+  const reviewMutation = useCreateReview();
 
   useEffect(() => {
+    setLanguage(detectLanguage());
     document.title = 'Garhwal Tour N Adventure | Travel Uttarakhand with a local guide';
     const description = 'Personal, flexible journeys through Garhwal — tours, rentals, rafting and custom plans with Mangal Singh Jethuri in Uttarakhand.';
     let meta = document.querySelector('meta[name="description"]');
-    if (!meta) {
-      meta = document.createElement('meta');
-      meta.setAttribute('name', 'description');
-      document.head.appendChild(meta);
-    }
+    if (!meta) { meta = document.createElement('meta'); meta.setAttribute('name', 'description'); document.head.appendChild(meta); }
     meta.setAttribute('content', description);
     const setSocial = (property: string, content: string) => {
       let tag = document.querySelector(`meta[property="${property}"]`);
-      if (!tag) {
-        tag = document.createElement('meta');
-        tag.setAttribute('property', property);
-        document.head.appendChild(tag);
-      }
+      if (!tag) { tag = document.createElement('meta'); tag.setAttribute('property', property); document.head.appendChild(tag); }
       tag.setAttribute('content', content);
     };
     setSocial('og:title', 'Garhwal Tour N Adventure');
@@ -119,316 +264,70 @@ function Home() {
     setSent(true);
   };
 
+  const submitReview = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setReviewError('');
+    const form = new FormData(event.currentTarget);
+    reviewMutation.mutate(
+      { data: { name: String(form.get('reviewerName') || ''), rating: Number(form.get('rating') || 5), comment: String(form.get('review') || '') } },
+      {
+        onSuccess: () => {
+          setReviewSent(true);
+          void queryClient.invalidateQueries({ queryKey: getListReviewsQueryKey() });
+          event.currentTarget.reset();
+        },
+        onError: () => setReviewError('Please check the details and try again.'),
+      },
+    );
+  };
+
   const closeMenu = () => setMenuOpen(false);
 
   return (
     <div className="site-grain min-h-[100dvh] bg-[#f8f4e9] text-[#15322f]">
       <header className="absolute inset-x-0 top-0 z-40">
         <div className="mx-auto flex max-w-[1240px] items-center justify-between px-5 py-5 lg:px-8">
-          <a href="#top" data-testid="link-brand-home" className="flex items-center gap-3 text-[#fffaf0]">
-            <LogoMark />
-            <span className="leading-tight">
-              <span className="block text-[13px] font-extrabold tracking-[0.03em]">GARHWAL TOUR</span>
-              <span className="block font-display text-[15px] italic text-[#f8c75a]">N Adventure</span>
-            </span>
-          </a>
-          <nav className="hidden items-center gap-8 lg:flex" aria-label="Primary navigation">
-            {navItems.map((item) => (
-              <a key={item.href} href={item.href} data-testid={`link-nav-${item.label.toLowerCase().replaceAll(' ', '-')}`} className="nav-link text-[12px] font-bold uppercase tracking-[0.14em] text-[#e6eee5] transition hover:text-[#f8c75a]">
-                {item.label}
-              </a>
-            ))}
-            <WhatsAppButton message="Namaste Mangal, I would like to enquire about planning a Uttarakhand trip." className="px-4 py-2.5 text-xs">
-              WhatsApp us
-            </WhatsAppButton>
+          <a href="#top" data-testid="link-brand-home" className="flex items-center gap-3 text-[#fffaf0]"><LogoMark /><span className="leading-tight"><span className="block text-[13px] font-extrabold tracking-[0.03em]">GARHWAL TOUR</span><span className="block font-display text-[15px] italic text-[#f8c75a]">N Adventure</span></span></a>
+          <nav className="hidden items-center gap-7 lg:flex" aria-label="Primary navigation">
+            {items.map((item) => <a key={item.href} href={item.href} data-testid={`link-nav-${item.href.slice(1)}`} className="nav-link text-[12px] font-bold uppercase tracking-[0.14em] text-[#e6eee5] transition hover:text-[#f8c75a]">{item.label}</a>)}
+            <LanguagePicker language={language} setLanguage={setLanguage} />
+            <WhatsAppButton message="Namaste Mangal, I would like to enquire about planning a Uttarakhand trip." className="px-4 py-2.5 text-xs">WhatsApp us</WhatsAppButton>
           </nav>
-          <button type="button" data-testid="button-open-mobile-menu" onClick={() => setMenuOpen(true)} aria-label="Open navigation menu" className="rounded-full border border-white/25 p-2.5 text-white lg:hidden">
-            <Menu size={21} />
-          </button>
+          <button type="button" data-testid="button-open-mobile-menu" onClick={() => setMenuOpen(true)} aria-label="Open navigation menu" className="rounded-full border border-white/25 p-2.5 text-white lg:hidden"><Menu size={21} /></button>
         </div>
-        {menuOpen && (
-          <div className="fixed inset-0 z-50 bg-[#15322f] px-6 py-6 lg:hidden">
-            <div className="flex items-center justify-between">
-              <a href="#top" onClick={closeMenu} data-testid="link-mobile-brand" className="flex items-center gap-3 text-[#fffaf0]"><LogoMark /><span className="text-sm font-extrabold tracking-[0.04em]">GARHWAL TOUR <span className="font-display italic text-[#f8c75a]">N Adventure</span></span></a>
-              <button type="button" data-testid="button-close-mobile-menu" onClick={closeMenu} aria-label="Close navigation menu" className="rounded-full border border-white/20 p-2 text-white"><X size={21} /></button>
-            </div>
-            <nav className="mt-20 flex flex-col gap-7" aria-label="Mobile navigation">
-              {navItems.map((item, index) => (
-                <a key={item.href} href={item.href} onClick={closeMenu} data-testid={`link-mobile-nav-${index}`} className="font-display text-4xl italic text-[#fffaf0]">{item.label}</a>
-              ))}
-              <WhatsAppButton message="Namaste Mangal, I would like to enquire about planning a Uttarakhand trip." className="mt-5 w-full py-4">Start a WhatsApp chat</WhatsAppButton>
-            </nav>
-            <p className="absolute bottom-8 left-6 font-mono-custom text-[10px] uppercase tracking-[0.2em] text-[#b7ccc0]">Uttarakhand, India · Since local</p>
-          </div>
-        )}
+        {menuOpen && <div className="fixed inset-0 z-50 bg-[#15322f] px-6 py-6 lg:hidden"><div className="flex items-center justify-between"><a href="#top" onClick={closeMenu} className="flex items-center gap-3 text-[#fffaf0]"><LogoMark /><span className="text-sm font-extrabold tracking-[0.04em]">GARHWAL TOUR <span className="font-display italic text-[#f8c75a]">N Adventure</span></span></a><button type="button" onClick={closeMenu} aria-label="Close navigation menu" className="rounded-full border border-white/20 p-2 text-white"><X size={21} /></button></div><nav className="mt-16 flex flex-col gap-6" aria-label="Mobile navigation">{items.map((item) => <a key={item.href} href={item.href} onClick={closeMenu} className="font-display text-4xl italic text-[#fffaf0]">{item.label}</a>)}<div className="mt-3"><LanguagePicker language={language} setLanguage={setLanguage} /></div><WhatsAppButton message="Namaste Mangal, I would like to enquire about planning a Uttarakhand trip." className="mt-2 w-full py-4">Start a WhatsApp chat</WhatsAppButton></nav><p className="absolute bottom-8 left-6 font-mono-custom text-[10px] uppercase tracking-[0.2em] text-[#b7ccc0]">Uttarakhand, India · MSME UDYAM-UK-11-0006387</p></div>}
       </header>
 
       <main id="top">
-        <section className="relative isolate flex min-h-[760px] items-end overflow-hidden bg-[#15322f] pb-14 pt-36 text-[#fffaf0] md:min-h-[780px] md:pb-20">
+        <section className="relative isolate flex min-h-[665px] items-end overflow-hidden bg-[#15322f] pb-14 pt-32 text-[#fffaf0] md:min-h-[700px] md:pb-20">
           <img src="/garhwal-hero.jpg" alt="A winding road through the Garhwal Himalaya at dawn" className="hero-image absolute inset-0 -z-20 h-full w-full object-cover object-center opacity-75" />
-          <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(21,50,47,.96)_0%,rgba(21,50,47,.7)_39%,rgba(21,50,47,.16)_76%,rgba(21,50,47,.35)_100%)]" />
-          <div className="absolute inset-0 -z-10 bg-[linear-gradient(0deg,rgba(21,50,47,.78)_0%,transparent_55%)]" />
-          <div className="mx-auto grid w-full max-w-[1240px] gap-12 px-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(300px,.6fr)] lg:items-end lg:px-8">
-            <div>
-              <div className="reveal flex items-center gap-3 font-mono-custom text-[10px] font-medium uppercase tracking-[0.24em] text-[#f8c75a]">
-                <span className="h-px w-9 bg-[#f8c75a]" /> Local roads. Wider days.
-              </div>
-              <h1 className="reveal reveal-delay-1 mt-6 max-w-[760px] font-display text-[clamp(4rem,9vw,8rem)] font-semibold leading-[.86] tracking-[-.055em] text-balance">
-                Go where<br /><span className="italic text-[#f8c75a]">the road</span><br />opens up.
-              </h1>
-              <p className="reveal reveal-delay-2 mt-8 max-w-[490px] text-base leading-7 text-[#dce7dc] md:text-lg">
-                Personal Uttarakhand journeys with a local hand on the wheel. Tours, rentals, rafting and room to change your mind.
-              </p>
-              <div className="reveal reveal-delay-3 mt-9 flex flex-wrap items-center gap-3">
-                <WhatsAppButton message="Namaste Mangal, I would like to plan a flexible Uttarakhand trip. Please help me with route ideas." className="px-6 py-3.5">Plan with Mangal</WhatsAppButton>
-                <a href="#route-notes" data-testid="link-hero-route-notes" className="group inline-flex items-center gap-2 rounded-full border border-white/35 px-5 py-3.5 text-sm font-bold text-white transition hover:border-[#f8c75a] hover:text-[#f8c75a]">
-                  See route ideas <ArrowDownRight size={16} className="transition group-hover:translate-x-0.5 group-hover:translate-y-0.5" />
-                </a>
-              </div>
-            </div>
-            <div className="reveal reveal-delay-4 hidden justify-self-end pb-3 lg:block">
-              <div className="max-w-[265px] border-l border-[#f8c75a]/70 pl-5">
-                <p className="font-display text-2xl italic leading-tight text-[#fffaf0]">“The best plan is the one that leaves space for a good view.”</p>
-                <p className="mt-4 font-mono-custom text-[10px] uppercase tracking-[0.16em] text-[#b7ccc0]">— Mangal Singh Jethuri, owner</p>
-              </div>
-            </div>
-          </div>
-          <a href="#ways-to-go" data-testid="link-scroll-ways-to-go" className="absolute bottom-7 right-6 hidden items-center gap-3 font-mono-custom text-[10px] uppercase tracking-[0.2em] text-[#dce7dc] md:flex">
-            Scroll to wander <span className="flex h-9 w-9 items-center justify-center rounded-full border border-white/30"><ChevronDown size={15} /></span>
-          </a>
+          <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(21,50,47,.96)_0%,rgba(21,50,47,.7)_39%,rgba(21,50,47,.16)_76%,rgba(21,50,47,.35)_100%)]" /><div className="absolute inset-0 -z-10 bg-[linear-gradient(0deg,rgba(21,50,47,.78)_0%,transparent_55%)]" />
+          <div className="mx-auto grid w-full max-w-[1240px] gap-12 px-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(300px,.6fr)] lg:items-end lg:px-8"><div><div className="reveal flex items-center gap-3 font-mono-custom text-[10px] font-medium uppercase tracking-[0.24em] text-[#f8c75a]"><span className="h-px w-9 bg-[#f8c75a]" /> {copy.hero.eyebrow}</div><h1 className="reveal reveal-delay-1 mt-6 max-w-[760px] font-display text-[clamp(4rem,9vw,8rem)] font-semibold leading-[.86] tracking-[-.055em] text-balance">{copy.hero.title}<br /><span className="italic text-[#f8c75a]">{copy.hero.accent}</span><br />opens up.</h1><p className="reveal reveal-delay-2 mt-8 max-w-[490px] text-base leading-7 text-[#dce7dc] md:text-lg">{copy.hero.description}</p><div className="reveal reveal-delay-3 mt-9 flex flex-wrap items-center gap-3"><WhatsAppButton message="Namaste Mangal, I would like to plan a flexible Uttarakhand trip. Please help me with route ideas." className="px-6 py-3.5">{copy.hero.primary}</WhatsAppButton><a href="#route-notes" data-testid="link-hero-route-notes" className="group inline-flex items-center gap-2 rounded-full border border-white/35 px-5 py-3.5 text-sm font-bold text-white transition hover:border-[#f8c75a] hover:text-[#f8c75a]">{copy.hero.secondary} <ArrowDownRight size={16} className="transition group-hover:translate-x-0.5 group-hover:translate-y-0.5" /></a></div></div><div className="reveal reveal-delay-4 hidden justify-self-end pb-3 lg:block"><div className="max-w-[265px] border-l border-[#f8c75a]/70 pl-5"><p className="font-display text-2xl italic leading-tight text-[#fffaf0]">“The best plan is the one that leaves space for a good view.”</p><p className="mt-4 font-mono-custom text-[10px] uppercase tracking-[0.16em] text-[#b7ccc0]">— Mangal Singh Jethuri, owner</p></div></div></div>
+          <a href="#ways-to-go" className="absolute bottom-7 right-6 hidden items-center gap-3 font-mono-custom text-[10px] uppercase tracking-[0.2em] text-[#dce7dc] md:flex">Scroll to wander <span className="flex h-9 w-9 items-center justify-center rounded-full border border-white/30"><ChevronDown size={15} /></span></a>
         </section>
 
-        <section className="border-b border-[#d9dfd2] bg-[#fffaf0]">
-          <div className="mx-auto grid max-w-[1240px] grid-cols-2 divide-x divide-[#d9dfd2] md:grid-cols-4 lg:px-8">
-            {[
-              ['01', 'Local point of view', 'routes shaped around you'],
-              ['02', 'Flexible by design', 'change pace as you go'],
-              ['03', 'One direct contact', 'speak to Mangal on WhatsApp'],
-              ['04', 'Mountain-aware', 'season comes into the plan'],
-            ].map(([number, title, copy]) => (
-              <div key={number} data-testid={`text-trust-point-${number}`} className="px-5 py-7 md:px-6 lg:py-8">
-                <span className="font-mono-custom text-[10px] text-[#e75b3b]">{number}</span>
-                <p className="mt-2 text-sm font-extrabold">{title}</p>
-                <p className="mt-1 text-xs leading-5 text-[#56736b]">{copy}</p>
-              </div>
-            ))}
-          </div>
-        </section>
+        <section id="ways-to-go" className="scroll-mt-10 bg-[#f8f4e9] py-20 md:py-24"><div className="mx-auto max-w-[1240px] px-5 lg:px-8"><div className="grid gap-8 md:grid-cols-[.75fr_1.25fr] md:items-end"><div><p className="font-mono-custom text-[10px] uppercase tracking-[0.23em] text-[#e75b3b]">{copy.services.kicker}</p><h2 className="mt-5 max-w-[400px] font-display text-5xl leading-[.94] tracking-[-.04em] md:text-6xl">{copy.services.title}<br /><span className="italic text-[#e75b3b]">{copy.services.accent}</span></h2></div><div className="max-w-[480px] md:justify-self-end"><p className="text-base leading-7 text-[#56736b]">{copy.services.description}</p><a href="#enquire" className="mt-5 inline-flex items-center gap-2 text-sm font-extrabold text-[#15322f] underline decoration-[#e75b3b] decoration-2 underline-offset-4 transition hover:text-[#e75b3b]">{copy.services.enquire} <ArrowRight size={15} /></a></div></div><div className="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">{services.map((service) => { const Icon = service.icon; return <a key={service.number} href="#enquire" onClick={() => setTrip(service.title)} data-testid={`card-service-${service.number}`} className={`service-card group relative min-h-[245px] overflow-hidden rounded-[1.4rem] p-6 ${service.tone === 'clay' ? 'bg-[#e75b3b] text-[#fffaf0]' : service.tone === 'moss' ? 'bg-[#dfe8d4]' : service.tone === 'saffron' ? 'bg-[#f8c75a]' : service.tone === 'river' ? 'bg-[#a9d6d5]' : 'bg-[#d7d8e2]'}`}><span className="font-mono-custom text-[10px] opacity-65">{service.number}</span><span className="absolute right-5 top-5 flex h-10 w-10 items-center justify-center rounded-full border border-current/20 transition group-hover:rotate-[-12deg]"><Icon size={19} /></span><div className="absolute inset-x-6 bottom-6"><h3 className="max-w-[180px] font-display text-3xl leading-[.95] tracking-[-.03em]">{service.title}</h3><p className="mt-3 max-w-[210px] text-xs leading-5 opacity-75">{service.copy}</p><span className="mt-4 inline-flex items-center gap-1 text-xs font-extrabold">Ask about it <ArrowRight size={13} className="transition group-hover:translate-x-1" /></span></div></a>; })}</div></div></section>
 
-        <section id="ways-to-go" className="scroll-mt-10 bg-[#f8f4e9] py-24 md:py-32">
-          <div className="mx-auto max-w-[1240px] px-5 lg:px-8">
-            <div className="grid gap-8 md:grid-cols-[.75fr_1.25fr] md:items-end">
-              <div>
-                <p className="font-mono-custom text-[10px] uppercase tracking-[0.23em] text-[#e75b3b]">01 / Ways to go</p>
-                <h2 className="mt-5 max-w-[400px] font-display text-5xl leading-[.94] tracking-[-.04em] md:text-6xl">Bring the idea.<br /><span className="italic text-[#e75b3b]">We’ll find the way.</span></h2>
-              </div>
-              <div className="max-w-[480px] md:justify-self-end">
-                <p className="text-base leading-7 text-[#56736b]">Some travellers arrive with a full route. Some just know they want mountain air. Both are a good place to start.</p>
-                <a href="#enquire" data-testid="link-services-enquire" className="mt-5 inline-flex items-center gap-2 text-sm font-extrabold text-[#15322f] underline decoration-[#e75b3b] decoration-2 underline-offset-4 transition hover:text-[#e75b3b]">Tell us what you have in mind <ArrowRight size={15} /></a>
-              </div>
-            </div>
-            <div className="mt-14 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-              {services.map((service) => {
-                const Icon = service.icon;
-                return (
-                  <a key={service.number} href="#enquire" onClick={() => setTrip(service.title)} data-testid={`card-service-${service.number}`} className={`service-card group relative min-h-[275px] overflow-hidden rounded-[1.4rem] p-6 ${service.tone === 'clay' ? 'bg-[#e75b3b] text-[#fffaf0]' : service.tone === 'moss' ? 'bg-[#dfe8d4]' : service.tone === 'saffron' ? 'bg-[#f8c75a]' : service.tone === 'river' ? 'bg-[#a9d6d5]' : 'bg-[#d7d8e2]'}`}>
-                    <span className="font-mono-custom text-[10px] opacity-65">{service.number}</span>
-                    <span className="absolute right-5 top-5 flex h-10 w-10 items-center justify-center rounded-full border border-current/20 transition group-hover:rotate-[-12deg]"><Icon size={19} /></span>
-                    <div className="absolute inset-x-6 bottom-6">
-                      <h3 className="max-w-[180px] font-display text-3xl leading-[.95] tracking-[-.03em]">{service.title}</h3>
-                      <p className="mt-4 max-w-[210px] text-xs leading-5 opacity-75">{service.copy}</p>
-                      <span className="mt-5 inline-flex items-center gap-1 text-xs font-extrabold">Ask about it <ArrowRight size={13} className="transition group-hover:translate-x-1" /></span>
-                    </div>
-                  </a>
-                );
-              })}
-            </div>
-          </div>
-        </section>
+        <section id="route-notes" className="scroll-mt-10 overflow-hidden bg-[#15322f] py-20 text-[#fffaf0] md:py-24"><div className="mx-auto max-w-[1240px] px-5 lg:px-8"><div className="flex flex-col justify-between gap-8 md:flex-row md:items-end"><div><p className="font-mono-custom text-[10px] uppercase tracking-[0.23em] text-[#f8c75a]">{copy.routes.kicker}</p><h2 className="mt-5 max-w-[640px] font-display text-5xl leading-[.93] tracking-[-.04em] md:text-7xl">{copy.routes.title}<br /><span className="italic text-[#f8c75a]">{copy.routes.accent}</span></h2></div><p className="max-w-[300px] text-sm leading-6 text-[#b7ccc0]">{copy.routes.description}</p></div><div className="mt-12 grid gap-5 md:grid-cols-3">{routes.map((route, index) => <a href="#enquire" key={route.name} onClick={() => setTrip(route.name)} data-testid={`card-route-${index}`} className="route-card group overflow-hidden rounded-[1.4rem] border border-white/10 bg-[#1d443f]"><div className="relative min-h-[190px] overflow-hidden"><img src={route.image} alt="" className="route-image h-full w-full object-cover opacity-85" /><div className="absolute inset-0 bg-gradient-to-t from-[#15322f]/75 to-transparent" /><span className={`absolute left-5 top-5 rounded-full px-3 py-1.5 font-mono-custom text-[9px] uppercase tracking-[0.13em] ${route.accent === 'clay' ? 'bg-[#e75b3b] text-white' : route.accent === 'moss' ? 'bg-[#dfe8d4] text-[#15322f]' : 'bg-[#f8c75a] text-[#15322f]'}`}>{route.days}</span></div><div className="flex min-h-[190px] flex-col justify-between p-6"><div><p className="font-mono-custom text-[10px] uppercase tracking-[0.14em] text-[#b7ccc0]">{route.eyebrow}</p><h3 className="mt-4 font-display text-3xl leading-[.95] tracking-[-.03em] text-[#fffaf0]">{route.name}</h3><p className="mt-4 text-sm leading-6 text-[#b7ccc0]">{route.copy}</p></div><span className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-[#f8c75a]">{copy.routes.action} <ArrowRight size={15} className="transition group-hover:translate-x-1" /></span></div></a>)}</div></div></section>
 
-        <section id="route-notes" className="scroll-mt-10 overflow-hidden bg-[#15322f] py-24 text-[#fffaf0] md:py-32">
-          <div className="mx-auto max-w-[1240px] px-5 lg:px-8">
-            <div className="flex flex-col justify-between gap-8 md:flex-row md:items-end">
-              <div>
-                <p className="font-mono-custom text-[10px] uppercase tracking-[0.23em] text-[#f8c75a]">02 / Route notes</p>
-                <h2 className="mt-5 max-w-[640px] font-display text-5xl leading-[.93] tracking-[-.04em] md:text-7xl">A few good<br /><span className="italic text-[#f8c75a]">places to begin.</span></h2>
-              </div>
-              <p className="max-w-[300px] text-sm leading-6 text-[#b7ccc0]">These are starting points, not packages. Tell us what you want more of, and what you want to skip.</p>
-            </div>
-            <div className="mt-14 grid gap-5 md:grid-cols-2">
-              {routes.map((route, index) => (
-                <a href="#enquire" key={route.name} onClick={() => setTrip(route.name)} data-testid={`card-route-${index}`} className="route-card group grid min-h-[355px] overflow-hidden rounded-[1.4rem] border border-white/10 bg-[#1d443f] md:grid-cols-[.88fr_1.12fr]">
-                  <div className="relative min-h-[220px] overflow-hidden">
-                    <img src={route.image} alt="" className="route-image h-full w-full object-cover opacity-85" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#15322f]/75 to-transparent" />
-                    <span className={`absolute left-5 top-5 rounded-full px-3 py-1.5 font-mono-custom text-[9px] uppercase tracking-[0.13em] ${route.accent === 'clay' ? 'bg-[#e75b3b] text-white' : route.accent === 'moss' ? 'bg-[#dfe8d4] text-[#15322f]' : route.accent === 'saffron' ? 'bg-[#f8c75a] text-[#15322f]' : 'bg-[#a9d6d5] text-[#15322f]'}`}>{route.days}</span>
-                    <span className="absolute bottom-5 left-5 font-mono-custom text-[10px] uppercase tracking-[0.16em] text-[#fffaf0]/75">Route {String(index + 1).padStart(2, '0')}</span>
-                  </div>
-                  <div className="flex flex-col justify-between p-6 md:p-7">
-                    <div>
-                      <p className="font-mono-custom text-[10px] uppercase tracking-[0.14em] text-[#b7ccc0]">{route.eyebrow}</p>
-                      <h3 className="mt-4 font-display text-3xl leading-[.95] tracking-[-.03em] text-[#fffaf0] md:text-4xl">{route.name}</h3>
-                      <p className="mt-5 text-sm leading-6 text-[#b7ccc0]">{route.copy}</p>
-                    </div>
-                    <span className="mt-8 inline-flex items-center gap-2 text-sm font-bold text-[#f8c75a]">Shape this route <ArrowRight size={15} className="transition group-hover:translate-x-1" /></span>
-                  </div>
-                </a>
-              ))}
-            </div>
-          </div>
-        </section>
+        <section id="reviews" className="scroll-mt-10 bg-[#e6eee5] py-20 md:py-24"><div className="mx-auto grid max-w-[1240px] gap-10 px-5 lg:grid-cols-[.85fr_1.15fr] lg:px-8"><div><p className="font-mono-custom text-[10px] uppercase tracking-[0.23em] text-[#e75b3b]">{copy.reviews.kicker}</p><h2 className="mt-5 max-w-[500px] font-display text-5xl leading-[.93] tracking-[-.04em] md:text-7xl">{copy.reviews.title}<br /><span className="italic text-[#e75b3b]">{copy.reviews.accent}</span></h2><p className="mt-7 max-w-[420px] text-base leading-7 text-[#56736b]">{copy.reviews.description}</p><div className="mt-8 rounded-2xl border border-[#b5cdbb] bg-[#fffaf0]/60 p-5"><p className="font-display text-3xl italic">{reviewsQuery.data?.length ? `${reviewsQuery.data.length} traveller ${reviewsQuery.data.length === 1 ? 'note' : 'notes'}` : 'Your story could be first.'}</p><p className="mt-2 text-xs leading-5 text-[#56736b]">Reviews are posted directly here after you submit them.</p></div></div><div className="grid gap-5 sm:grid-cols-2"><div className="rounded-[1.4rem] bg-[#fffaf0] p-6 shadow-[0_15px_40px_rgba(21,50,47,0.08)]"><div className="flex items-center gap-1 text-[#e75b3b]" aria-label="Five star rating">{[1, 2, 3, 4, 5].map((star) => <Star key={star} size={15} fill="currentColor" />)}</div>{reviewsQuery.data && reviewsQuery.data.length > 0 ? <div className="mt-7 space-y-5">{reviewsQuery.data.slice(0, 3).map((review) => <article key={review.id} className="border-b border-[#d9dfd2] pb-5 last:border-0 last:pb-0"><div className="flex items-center justify-between gap-2"><p className="text-sm font-extrabold">{review.name}</p><span className="flex items-center gap-0.5 text-[#e75b3b]" aria-label={`${review.rating} out of 5 stars`}>{[1, 2, 3, 4, 5].map((star) => <Star key={star} size={11} fill={star <= review.rating ? 'currentColor' : 'none'} />)}</span></div><p className="mt-2 text-sm leading-6 text-[#56736b]">“{review.comment}”</p></article>)}</div> : <p className="mt-7 text-sm leading-6 text-[#56736b]">{copy.reviews.empty}</p>}</div><div className="rounded-[1.4rem] bg-[#15322f] p-6 text-[#fffaf0]"><div className="flex items-center gap-2"><Star size={17} className="text-[#f8c75a]" fill="currentColor" /><h3 className="font-display text-3xl italic">{copy.reviews.formTitle}</h3></div>{reviewSent ? <div className="flex min-h-[250px] flex-col justify-center"><span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#dfe8d4] text-[#15322f]"><Check size={21} /></span><p className="mt-5 text-sm leading-6 text-[#dce7dc]">{copy.reviews.success}</p><button type="button" onClick={() => setReviewSent(false)} className="mt-5 self-start text-xs font-bold text-[#f8c75a] underline underline-offset-4">Post another review</button></div> : <form onSubmit={submitReview} className="mt-6 space-y-4"><label className="block"><span className="mb-2 block text-xs font-bold text-[#dce7dc]">{copy.reviews.name}</span><input name="reviewerName" required minLength={2} maxLength={80} className="w-full rounded-xl border border-white/15 bg-white/10 px-3 py-2.5 text-sm text-white outline-none placeholder:text-[#8eb0a0] focus:border-[#f8c75a]" placeholder="Mangal should know who to thank" /></label><fieldset><legend className="mb-2 block text-xs font-bold text-[#dce7dc]">{copy.reviews.rating}</legend><div className="flex gap-1">{[1, 2, 3, 4, 5].map((star) => <label key={star} className="cursor-pointer"><input type="radio" name="rating" value={star} defaultChecked={star === 5} className="sr-only" /><Star size={21} className="text-[#f8c75a] transition hover:scale-110" fill="currentColor" /></label>)}</div></fieldset><label className="block"><span className="mb-2 block text-xs font-bold text-[#dce7dc]">{copy.reviews.comment}</span><textarea name="review" required minLength={10} maxLength={500} rows={3} className="w-full resize-none rounded-xl border border-white/15 bg-white/10 px-3 py-2.5 text-sm text-white outline-none placeholder:text-[#8eb0a0] focus:border-[#f8c75a]" placeholder="Tell another traveller what stood out" /></label>{reviewError && <p className="text-xs text-[#ffb2a2]">{reviewError}</p>}<button type="submit" disabled={reviewMutation.isPending} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#f8c75a] px-4 py-3 text-sm font-extrabold text-[#15322f] transition hover:bg-[#ffd77c] disabled:cursor-wait disabled:opacity-60">{reviewMutation.isPending ? 'Posting…' : copy.reviews.submit} <ArrowRight size={15} /></button></form>}</div></div></div></section>
 
-        <section className="relative overflow-hidden bg-[#e6eee5] py-24 md:py-32">
-          <div className="pointer-events-none absolute -right-10 top-10 h-72 w-72 rounded-full border border-[#b5cdbb] md:right-16 md:h-96 md:w-96" />
-          <div className="pointer-events-none absolute -right-4 top-24 h-60 w-60 rounded-full border border-[#b5cdbb] md:right-28 md:h-80 md:w-80" />
-          <div className="mx-auto grid max-w-[1240px] gap-14 px-5 lg:grid-cols-[.9fr_1.1fr] lg:items-center lg:px-8">
-            <div>
-              <p className="font-mono-custom text-[10px] uppercase tracking-[0.23em] text-[#e75b3b]">03 / Read the season</p>
-              <h2 className="mt-5 max-w-[500px] font-display text-5xl leading-[.93] tracking-[-.04em] md:text-7xl">The hills<br /><span className="italic text-[#e75b3b]">have a rhythm.</span></h2>
-              <p className="mt-7 max-w-[440px] text-base leading-7 text-[#56736b]">Rafting days, snowy roads and forest walks each have their moment. We will help you choose an experience that makes sense for when you arrive.</p>
-              <WhatsAppButton message="Namaste Mangal, I am wondering what Uttarakhand experiences suit my travel dates. Could you guide me by season?" className="mt-8">Ask about my season</WhatsAppButton>
-            </div>
-            <div className="relative z-10 grid gap-3 sm:grid-cols-3">
-              {[
-                { season: 'Spring', months: 'Mar — Apr', title: 'Clear mornings', copy: 'Good for road days, temple towns and the first green on the slopes.', color: 'bg-[#f8c75a]' },
-                { season: 'Summer', months: 'May — Jun', title: 'River time', copy: 'A lively window for Rishikesh, higher escapes and long daylight.', color: 'bg-[#a9d6d5]' },
-                { season: 'Autumn', months: 'Oct — Nov', title: 'Big light', copy: 'Crisp skies and wide views before winter settles into the high roads.', color: 'bg-[#e75b3b] text-[#fffaf0]' },
-              ].map((item) => (
-                <div key={item.season} data-testid={`card-season-${item.season.toLowerCase()}`} className={`rounded-[1.3rem] p-5 ${item.color}`}>
-                  <p className="font-mono-custom text-[10px] uppercase tracking-[0.13em] opacity-65">{item.months}</p>
-                  <h3 className="mt-12 font-display text-3xl italic leading-none">{item.season}</h3>
-                  <p className="mt-4 text-sm font-extrabold">{item.title}</p>
-                  <p className="mt-2 text-xs leading-5 opacity-75">{item.copy}</p>
-                </div>
-              ))}
-              <p className="sm:col-span-3 font-mono-custom text-[10px] uppercase tracking-[0.12em] text-[#56736b]">Conditions change by altitude. Confirm the practical details with us before you set off.</p>
-            </div>
-          </div>
-        </section>
-
-        <section id="why-local" className="scroll-mt-10 bg-[#fffaf0] py-24 md:py-32">
-          <div className="mx-auto max-w-[1240px] px-5 lg:px-8">
-            <div className="grid gap-14 lg:grid-cols-[.8fr_1.2fr] lg:items-center">
-              <div className="relative mx-auto w-full max-w-[430px]">
-                <div className="absolute -left-3 -top-3 h-full w-full rounded-[1.6rem] border border-[#e75b3b] md:-left-5 md:-top-5" />
-                <div className="relative flex aspect-[4/5] flex-col justify-between overflow-hidden rounded-[1.6rem] bg-[#15322f] p-7 text-[#fffaf0] md:p-9">
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono-custom text-[10px] uppercase tracking-[0.18em] text-[#f8c75a]">Local note / 01</span>
-                    <TentTree size={22} className="text-[#f8c75a]" />
-                  </div>
-                  <div>
-                    <p className="font-display text-5xl italic leading-[.95] md:text-6xl">You bring<br />the curiosity.</p>
-                    <div className="mt-8 flex items-center gap-3 border-t border-white/15 pt-5">
-                      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#f8c75a] font-display text-lg text-[#15322f]">M</span>
-                      <div><p className="text-sm font-bold">Mangal Singh Jethuri</p><p className="font-mono-custom text-[9px] uppercase tracking-[0.13em] text-[#b7ccc0]">Owner · Garhwal Tour N Adventure</p></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <p className="font-mono-custom text-[10px] uppercase tracking-[0.23em] text-[#e75b3b]">04 / Why local</p>
-                <h2 className="mt-5 max-w-[600px] font-display text-5xl leading-[.93] tracking-[-.04em] md:text-7xl">Not a marketplace.<br /><span className="italic text-[#e75b3b]">A local conversation.</span></h2>
-                <p className="mt-7 max-w-[560px] text-base leading-7 text-[#56736b]">Garhwal is home ground. That means your trip can stay open: one more chai stop, a quieter road, a change of plan when the mountains ask for it.</p>
-                <div className="mt-9 grid gap-4 border-t border-[#d9dfd2] pt-7 sm:grid-cols-2">
-                  {[
-                    ['Talk to one person', 'No maze of forms or hand-offs. Start with a message to Mangal.'],
-                    ['Plan around your people', 'Solo, family, friends or a full car — the pace starts with you.'],
-                    ['Keep it practical', 'Dates, group size, weather and road conditions belong in the conversation.'],
-                    ['Leave room for wonder', 'The memorable bit is often the stop nobody wrote down.'],
-                  ].map(([title, copy], index) => (
-                    <div key={title} data-testid={`text-local-principle-${index}`} className="flex gap-3">
-                      <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#dfe8d4] text-[#15322f]"><Check size={12} strokeWidth={3} /></span>
-                      <div><p className="text-sm font-extrabold">{title}</p><p className="mt-1 text-xs leading-5 text-[#56736b]">{copy}</p></div>
-                    </div>
-                  ))}
-                </div>
-                <WhatsAppButton message="Namaste Mangal, I found Garhwal Tour N Adventure and would like to speak about a trip in Uttarakhand." className="mt-9">Speak with Mangal</WhatsAppButton>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section id="enquire" className="scroll-mt-8 bg-[#e75b3b] py-20 text-[#fffaf0] md:py-28">
-          <div className="mx-auto grid max-w-[1240px] gap-12 px-5 lg:grid-cols-[.8fr_1.2fr] lg:px-8">
-            <div>
-              <p className="font-mono-custom text-[10px] uppercase tracking-[0.23em] text-[#f8c75a]">05 / Your turn</p>
-              <h2 className="mt-5 max-w-[500px] font-display text-6xl leading-[.88] tracking-[-.05em] md:text-8xl">Let’s put<br /><span className="italic text-[#f8c75a]">a route</span><br />together.</h2>
-              <p className="mt-7 max-w-[400px] text-base leading-7 text-[#ffe7d7]">Send a few details. Your message opens WhatsApp with Mangal — no account, no commitment, just a useful first conversation.</p>
-              <div className="mt-8 space-y-4 border-t border-white/20 pt-6">
-                <a href="tel:+918077016559" data-testid="link-call-mangal" className="flex items-center gap-3 text-sm font-bold transition hover:text-[#f8c75a]"><span className="flex h-9 w-9 items-center justify-center rounded-full border border-white/30"><Phone size={15} /></span> +91 80770 16559</a>
-                <button type="button" data-testid="button-direct-whatsapp" onClick={() => openWhatsApp('Namaste Mangal, I would like to ask about a Uttarakhand trip.')} className="flex items-center gap-3 text-sm font-bold transition hover:text-[#f8c75a]"><span className="flex h-9 w-9 items-center justify-center rounded-full border border-white/30"><MessageCircle size={15} /></span> WhatsApp Mangal directly</button>
-              </div>
-            </div>
-            <div className="rounded-[1.5rem] bg-[#fffaf0] p-6 text-[#15322f] shadow-[0_25px_60px_rgba(102,32,15,0.18)] md:p-9">
-              {sent ? (
-                <div className="flex min-h-[425px] flex-col items-start justify-center">
-                  <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[#dfe8d4] text-[#15322f]"><Check size={27} /></span>
-                  <h3 className="mt-7 font-display text-5xl leading-none">Message<br /><span className="italic text-[#e75b3b]">ready to go.</span></h3>
-                  <p className="mt-5 max-w-[390px] text-sm leading-6 text-[#56736b]">WhatsApp should be open with your enquiry. If it did not open, use the direct contact below and Mangal will pick it up.</p>
-                  <button type="button" data-testid="button-send-another-enquiry" onClick={() => setSent(false)} className="mt-7 inline-flex items-center gap-2 text-sm font-extrabold underline decoration-[#e75b3b] decoration-2 underline-offset-4">Send another enquiry <ArrowRight size={14} /></button>
-                </div>
-              ) : (
-                <form onSubmit={submitEnquiry} className="space-y-5">
-                  <div className="flex items-start justify-between gap-4 border-b border-[#d9dfd2] pb-5">
-                    <div><p className="font-mono-custom text-[10px] uppercase tracking-[0.18em] text-[#e75b3b]">Quick enquiry</p><h3 className="mt-2 font-display text-3xl leading-none">Where are you<br /><span className="italic">headed?</span></h3></div>
-                    <Send size={21} className="mt-1 text-[#e75b3b]" />
-                  </div>
-                  <label className="block"><span className="mb-2 block text-xs font-extrabold">Your name</span><input name="name" required data-testid="input-enquiry-name" className="w-full rounded-xl border border-[#cfd9cc] bg-[#f8f4e9] px-4 py-3 text-sm outline-none transition placeholder:text-[#8aa096] focus:border-[#e75b3b] focus:ring-2 focus:ring-[#e75b3b]/15" placeholder="What should we call you?" /></label>
-                  <div className="grid gap-5 sm:grid-cols-2">
-                    <label className="block"><span className="mb-2 block text-xs font-extrabold">Dates</span><input name="dates" data-testid="input-enquiry-dates" className="w-full rounded-xl border border-[#cfd9cc] bg-[#f8f4e9] px-4 py-3 text-sm outline-none transition placeholder:text-[#8aa096] focus:border-[#e75b3b] focus:ring-2 focus:ring-[#e75b3b]/15" placeholder="e.g. 12–18 October" /></label>
-                    <label className="block"><span className="mb-2 block text-xs font-extrabold">Group size</span><input name="group" data-testid="input-enquiry-group" className="w-full rounded-xl border border-[#cfd9cc] bg-[#f8f4e9] px-4 py-3 text-sm outline-none transition placeholder:text-[#8aa096] focus:border-[#e75b3b] focus:ring-2 focus:ring-[#e75b3b]/15" placeholder="e.g. 4 adults" /></label>
-                  </div>
-                  <label className="block"><span className="mb-2 block text-xs font-extrabold">I’m interested in</span><select name="interest" value={trip} onChange={(event) => setTrip(event.target.value)} data-testid="select-enquiry-interest" className="w-full appearance-none rounded-xl border border-[#cfd9cc] bg-[#f8f4e9] px-4 py-3 text-sm outline-none transition focus:border-[#e75b3b] focus:ring-2 focus:ring-[#e75b3b]/15"><option value="">A little bit of everything</option><option>Uttarakhand tours</option><option>Car rental</option><option>Bike or scooty rental</option><option>River rafting in Rishikesh</option><option>Custom route planning</option>{routes.map((route) => <option key={route.name}>{route.name}</option>)}</select></label>
-                  <label className="block"><span className="mb-2 block text-xs font-extrabold">Anything to know?</span><textarea name="note" data-testid="input-enquiry-note" rows={3} className="w-full resize-none rounded-xl border border-[#cfd9cc] bg-[#f8f4e9] px-4 py-3 text-sm outline-none transition placeholder:text-[#8aa096] focus:border-[#e75b3b] focus:ring-2 focus:ring-[#e75b3b]/15" placeholder="Slow mornings, a short trek, temple visits, rafting..."></textarea></label>
-                  <button type="submit" data-testid="button-submit-enquiry" className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#15322f] px-5 py-4 text-sm font-extrabold text-[#fffaf0] transition hover:bg-[#28534b] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#e75b3b] focus-visible:ring-offset-2">Open WhatsApp enquiry <ArrowRight size={16} /></button>
-                  <p className="text-center font-mono-custom text-[9px] uppercase tracking-[0.13em] text-[#789087]">No booking form. Just a direct conversation.</p>
-                </form>
-              )}
-            </div>
-          </div>
-        </section>
+        <section id="enquire" className="scroll-mt-8 bg-[#e75b3b] py-20 text-[#fffaf0] md:py-24"><div className="mx-auto grid max-w-[1240px] gap-10 px-5 lg:grid-cols-[.8fr_1.2fr] lg:px-8"><div><p className="font-mono-custom text-[10px] uppercase tracking-[0.23em] text-[#f8c75a]">{copy.enquiry.kicker}</p><h2 className="mt-5 max-w-[500px] font-display text-6xl leading-[.88] tracking-[-.05em] md:text-8xl">{copy.enquiry.title}<br /><span className="italic text-[#f8c75a]">{copy.enquiry.accent}</span></h2><p className="mt-7 max-w-[400px] text-base leading-7 text-[#ffe7d7]">{copy.enquiry.description}</p><div className="mt-8 space-y-4 border-t border-white/20 pt-6"><a href="tel:+918077016559" className="flex items-center gap-3 text-sm font-bold transition hover:text-[#f8c75a]"><span className="flex h-9 w-9 items-center justify-center rounded-full border border-white/30"><Phone size={15} /></span> +91 80770 16559</a><button type="button" onClick={() => openWhatsApp('Namaste Mangal, I would like to ask about a Uttarakhand trip.')} className="flex items-center gap-3 text-sm font-bold transition hover:text-[#f8c75a]"><span className="flex h-9 w-9 items-center justify-center rounded-full border border-white/30"><MessageCircle size={15} /></span> WhatsApp Mangal directly</button></div></div><div className="rounded-[1.5rem] bg-[#fffaf0] p-6 text-[#15322f] shadow-[0_25px_60px_rgba(102,32,15,0.18)] md:p-9">{sent ? <div className="flex min-h-[385px] flex-col items-start justify-center"><span className="flex h-14 w-14 items-center justify-center rounded-full bg-[#dfe8d4] text-[#15322f]"><Check size={27} /></span><h3 className="mt-7 font-display text-5xl leading-none">Message<br /><span className="italic text-[#e75b3b]">ready to go.</span></h3><p className="mt-5 max-w-[390px] text-sm leading-6 text-[#56736b]">WhatsApp should be open with your enquiry. If it did not open, use the direct contact above.</p><button type="button" onClick={() => setSent(false)} className="mt-7 inline-flex items-center gap-2 text-sm font-extrabold underline decoration-[#e75b3b] decoration-2 underline-offset-4">Send another enquiry <ArrowRight size={14} /></button></div> : <form onSubmit={submitEnquiry} className="space-y-5"><div className="flex items-start justify-between gap-4 border-b border-[#d9dfd2] pb-5"><div><p className="font-mono-custom text-[10px] uppercase tracking-[0.18em] text-[#e75b3b]">Quick enquiry</p><h3 className="mt-2 font-display text-3xl leading-none">{copy.enquiry.formTitle}</h3></div><Send size={21} className="mt-1 text-[#e75b3b]" /></div><label className="block"><span className="mb-2 block text-xs font-extrabold">{copy.enquiry.name}</span><input name="name" required className="w-full rounded-xl border border-[#cfd9cc] bg-[#f8f4e9] px-4 py-3 text-sm outline-none transition placeholder:text-[#8aa096] focus:border-[#e75b3b] focus:ring-2 focus:ring-[#e75b3b]/15" placeholder="What should we call you?" /></label><div className="grid gap-5 sm:grid-cols-2"><label className="block"><span className="mb-2 block text-xs font-extrabold">{copy.enquiry.dates}</span><input name="dates" className="w-full rounded-xl border border-[#cfd9cc] bg-[#f8f4e9] px-4 py-3 text-sm outline-none transition placeholder:text-[#8aa096] focus:border-[#e75b3b] focus:ring-2 focus:ring-[#e75b3b]/15" placeholder="e.g. 12–18 October" /></label><label className="block"><span className="mb-2 block text-xs font-extrabold">{copy.enquiry.group}</span><input name="group" className="w-full rounded-xl border border-[#cfd9cc] bg-[#f8f4e9] px-4 py-3 text-sm outline-none transition placeholder:text-[#e75b3b] focus:border-[#e75b3b] focus:ring-2 focus:ring-[#e75b3b]/15" placeholder="e.g. 4 adults" /></label></div><label className="block"><span className="mb-2 block text-xs font-extrabold">{copy.enquiry.interest}</span><select name="interest" value={trip} onChange={(event) => setTrip(event.target.value)} className="w-full appearance-none rounded-xl border border-[#cfd9cc] bg-[#f8f4e9] px-4 py-3 text-sm outline-none transition focus:border-[#e75b3b] focus:ring-2 focus:ring-[#e75b3b]/15"><option value="">A little bit of everything</option>{services.map((service) => <option key={service.title}>{service.title}</option>)}{routes.map((route) => <option key={route.name}>{route.name}</option>)}</select></label><label className="block"><span className="mb-2 block text-xs font-extrabold">{copy.enquiry.note}</span><textarea name="note" rows={3} className="w-full resize-none rounded-xl border border-[#cfd9cc] bg-[#f8f4e9] px-4 py-3 text-sm outline-none transition placeholder:text-[#8aa096] focus:border-[#e75b3b] focus:ring-2 focus:ring-[#e75b3b]/15" placeholder="Slow mornings, a short trek, temple visits, rafting..." /></label><button type="submit" className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#15322f] px-5 py-4 text-sm font-extrabold text-[#fffaf0] transition hover:bg-[#28534b]">{copy.enquiry.submit} <ArrowRight size={16} /></button><p className="text-center font-mono-custom text-[9px] uppercase tracking-[0.13em] text-[#789087]">No booking form. Just a direct conversation.</p></form>}</div></div></section>
       </main>
 
-      <footer className="bg-[#15322f] py-12 text-[#fffaf0]">
-        <div className="mx-auto max-w-[1240px] px-5 lg:px-8">
-          <div className="flex flex-col justify-between gap-8 border-b border-white/15 pb-10 md:flex-row md:items-end">
-            <div className="flex items-center gap-3"><LogoMark /><div><p className="text-sm font-extrabold tracking-[0.04em]">GARHWAL TOUR N ADVENTURE</p><p className="mt-1 text-xs text-[#b7ccc0]">Uttarakhand, India</p></div></div>
-            <div className="flex flex-wrap gap-x-6 gap-y-3 text-xs font-bold text-[#dce7dc]">
-              {navItems.map((item) => <a key={item.href} href={item.href} data-testid={`link-footer-${item.label.toLowerCase().replaceAll(' ', '-')}`} className="transition hover:text-[#f8c75a]">{item.label}</a>)}
-              <a href="tel:+918077016559" data-testid="link-footer-phone" className="transition hover:text-[#f8c75a]">+91 80770 16559</a>
-            </div>
-          </div>
-          <div className="flex flex-col justify-between gap-4 pt-7 text-[10px] text-[#8eb0a0] sm:flex-row"><p>Built for the curious, by a local.</p><div className="flex items-center gap-5"><span>© {new Date().getFullYear()} Garhwal Tour N Adventure</span><a href="https://www.instagram.com/" target="_blank" rel="noreferrer" data-testid="link-instagram" aria-label="Garhwal Tour N Adventure on Instagram" className="transition hover:text-[#f8c75a]"><Instagram size={15} /></a></div></div>
-        </div>
-      </footer>
-
-      <button type="button" data-testid="button-floating-whatsapp" onClick={() => openWhatsApp('Namaste Mangal, I would like to plan a trip through Uttarakhand.')} aria-label="Open WhatsApp enquiry" className="whatsapp-pulse fixed bottom-5 right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-[#2d9a62] text-white shadow-lg transition hover:scale-105 hover:bg-[#258653] md:bottom-7 md:right-7"><MessageCircle size={25} /></button>
+      <footer className="bg-[#15322f] py-10 text-[#fffaf0]"><div className="mx-auto max-w-[1240px] px-5 lg:px-8"><div className="flex flex-col justify-between gap-7 border-b border-white/15 pb-8 md:flex-row md:items-end"><div className="flex items-center gap-3"><LogoMark /><div><p className="text-sm font-extrabold tracking-[0.04em]">GARHWAL TOUR N ADVENTURE</p><p className="mt-1 text-xs text-[#b7ccc0]">Uttarakhand, India · Owner: Mangal Singh Jethuri</p><p className="mt-1 font-mono-custom text-[9px] uppercase tracking-[0.12em] text-[#8eb0a0]">MSME / UDYAM-UK-11-0006387</p></div></div><div className="flex flex-wrap gap-x-5 gap-y-3 text-xs font-bold text-[#dce7dc]">{items.map((item) => <a key={item.href} href={item.href} className="transition hover:text-[#f8c75a]">{item.label}</a>)}<a href="tel:+918077016559" className="transition hover:text-[#f8c75a]">+91 80770 16559</a></div></div><div className="flex flex-col justify-between gap-4 pt-6 text-[10px] text-[#8eb0a0] sm:flex-row"><p>Built for the curious, by a local.</p><div className="flex items-center gap-5"><span>© {new Date().getFullYear()} Garhwal Tour N Adventure</span><a href="https://www.instagram.com/" target="_blank" rel="noreferrer" aria-label="Garhwal Tour N Adventure on Instagram" className="transition hover:text-[#f8c75a]"><Instagram size={15} /></a></div></div></div></footer>
+      <button type="button" onClick={() => openWhatsApp('Namaste Mangal, I would like to plan a trip through Uttarakhand.')} aria-label="Open WhatsApp enquiry" className="whatsapp-pulse fixed bottom-5 right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-[#2d9a62] text-white shadow-lg transition hover:scale-105 hover:bg-[#258653] md:bottom-7 md:right-7"><MessageCircle size={25} /></button>
     </div>
   );
 }
 
 function Router() {
-  return (
-    <ErrorBoundary>
-      <Switch>
-        <Route path="/" component={Home} />
-        <Route component={NotFound} />
-      </Switch>
-    </ErrorBoundary>
-  );
+  const [location] = useLocation();
+  return <ErrorBoundary resetKey={location}><Switch><Route path="/" component={Home} /><Route component={NotFound} /></Switch></ErrorBoundary>;
 }
 
 function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-          <Router />
-        </WouterRouter>
-        <Toaster />
-      </TooltipProvider>
-    </QueryClientProvider>
-  );
+  return <QueryClientProvider client={queryClient}><TooltipProvider><WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}><Router /></WouterRouter><Toaster /></TooltipProvider></QueryClientProvider>;
 }
 
 export default App;
