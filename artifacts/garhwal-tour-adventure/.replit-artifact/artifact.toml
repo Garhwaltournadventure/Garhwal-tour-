@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Garhwal Tour N Adventure"
+description = "A free-to-publish travel website for Garhwal Tour N Adventure, offering Uttarakhand tours, car and two-wheeler rentals, rafting, and custom trip planning with direct WhatsApp enquiries."
+version = "1.0.0"
+id = "artifacts/garhwal-tour-adventure"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25802
+
+[services.development]
+run = "pnpm --filter @workspace/garhwal-tour-adventure run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/garhwal-tour-adventure", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/garhwal-tour-adventure/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25802"
+BASE_PATH = "/"
