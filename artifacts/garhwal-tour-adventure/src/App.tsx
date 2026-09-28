@@ -37,10 +37,17 @@ type LanguageCode =
   | 'ta'
   | 'te'
   | 'kn'
-  | 'ml';
-
+  | 'ml'
+  | 'es'
+  | 'pt'
+  | 'ja'
+  | 'zh';
 const languageOptions: { code: LanguageCode; label: string; native: string }[] = [
   { code: 'en', label: 'English', native: 'English' },
+  { code: 'es', label: 'Spanish', native: 'Español' },
+  { code: 'pt', label: 'Portuguese', native: 'Português' },
+  { code: 'ja', label: 'Japanese', native: '日本語' },
+  { code: 'zh', label: 'Chinese', native: '中文' },
   { code: 'hi', label: 'Hindi', native: 'हिन्दी' },
   { code: 'bn', label: 'Bengali', native: 'বাংলা' },
   { code: 'mr', label: 'Marathi', native: 'मराठी' },
@@ -139,6 +146,192 @@ const localizedCopy: Partial<Record<LanguageCode, DeepPartial<Copy>>> = {
   te: { nav: { services: 'సేవలు', routes: 'మార్గ సూచనలు', reviews: 'సమీక్షలు', plan: 'యాత్రను ప్లాన్ చేయండి' }, hero: { eyebrow: 'స్థానిక రహదారులు. పెద్ద రోజులు.', title: 'దారి', accent: 'తెరుచుకునే చోట', description: 'ఉత్తరాఖండ్ వ్యక్తిగత ప్రయాణాలు — టూర్లు, వాహన అద్దె, రాఫ్టింగ్ మరియు మీ ఇష్టానికి తగిన ప్రణాళిక.', primary: 'మంగళతో ప్లాన్ చేయండి', secondary: 'మార్గాలు చూడండి' } },
   kn: { nav: { services: 'ಸೇವೆಗಳು', routes: 'ಮಾರ್ಗ ಸೂಚನೆಗಳು', reviews: 'ವಿಮರ್ಶೆಗಳು', plan: 'ಪ್ರವಾಸ ಯೋಜಿಸಿ' }, hero: { eyebrow: 'ಸ್ಥಳೀಯ ರಸ್ತೆಗಳು. ದೊಡ್ಡ ದಿನಗಳು.', title: 'ದಾರಿ', accent: 'ತೆರೆದುಕೊಳ್ಳುವಲ್ಲಿ', description: 'ಉತ್ತರಾಖಂಡದ ವೈಯಕ್ತಿಕ ಪ್ರವಾಸಗಳು — ಟೂರ್, ವಾಹನ ಬಾಡಿಗೆ, ರಾಫ್ಟಿಂಗ್ ಮತ್ತು ನಿಮ್ಮ ಇಚ್ಛೆಯಂತೆ ಯೋಜನೆ.', primary: 'ಮಂಗಲ್ ಜೊತೆ ಯೋಜಿಸಿ', secondary: 'ಮಾರ್ಗಗಳನ್ನು ನೋಡಿ' } },
   ml: { nav: { services: 'സേവനങ്ങൾ', routes: 'റൂട്ട് കുറിപ്പുകൾ', reviews: 'അവലോകനങ്ങൾ', plan: 'യാത്ര ആസൂത്രണം ചെയ്യുക' }, hero: { eyebrow: 'പ്രാദേശിക വഴികൾ. വലിയ ദിവസങ്ങൾ.', title: 'വഴി', accent: 'തുറക്കുന്നിടത്ത്', description: 'ഉത്തരാഖണ്ഡിലെ വ്യക്തിഗത യാത്രകൾ — ടൂറുകൾ, വാഹന വാടക, റാഫ്റ്റിംഗ്, നിങ്ങളുടെ ഇഷ്ടത്തിനനുസരിച്ചുള്ള ആസൂത്രണം.', primary: 'മംഗലിനൊപ്പം ആസൂത്രണം ചെയ്യുക', secondary: 'റൂട്ടുകൾ കാണുക' } },
+  es: {
+    nav: { services: 'Servicios', routes: 'Rutas', reviews: 'Reseñas', plan: 'Planifica tu viaje' },
+    hero: {
+      eyebrow: 'Carreteras locales. Grandes días.',
+      title: 'Ve donde',
+      accent: 'se abre el camino',
+      description: 'Viajes personalizados por Uttarakhand con un guía local. Tours, alquileres, rafting y planes flexibles.',
+      primary: 'Planificar con Mangal',
+      secondary: 'Ver rutas',
+    },
+    services: {
+      kicker: '01 / Servicios',
+      title: 'Trae la idea.',
+      accent: 'Encontraremos el camino.',
+      description: 'Puedes llegar con una ruta completa o solo con ganas de montaña. Ambas son un buen comienzo.',
+      enquire: 'Cuéntanos qué buscas',
+    },
+    routes: {
+      kicker: '02 / Rutas',
+      title: 'Algunos buenos',
+      accent: 'lugares para empezar.',
+      description: 'Puntos de partida, no paquetes. Dinos qué quieres disfrutar y qué prefieres evitar.',
+      action: 'Diseñar esta ruta',
+    },
+    reviews: {
+      kicker: '03 / Opiniones de viajeros',
+      title: 'Los buenos viajes',
+      accent: 'se quedan contigo.',
+      description: 'Lee las opiniones en Google o comparte tu experiencia.',
+      read: 'Leer reseñas de Google',
+      leave: 'Dejar una reseña en Google',
+    },
+    enquiry: {
+      kicker: '04 / Tu turno',
+      title: 'Hagamos',
+      accent: 'una ruta juntos.',
+      description: 'Envía algunos detalles. Tu mensaje abrirá WhatsApp con Mangal, sin cuenta ni compromiso.',
+      formTitle: '¿Adónde quieres ir?',
+      name: 'Tu nombre',
+      dates: 'Fechas',
+      group: 'Tamaño del grupo',
+      interest: 'Me interesa',
+      note: '¿Algo más que debamos saber?',
+      submit: 'Abrir consulta de WhatsApp',
+    },
+  },
+
+  pt: {
+    nav: { services: 'Serviços', routes: 'Rotas', reviews: 'Avaliações', plan: 'Planear viagem' },
+    hero: {
+      eyebrow: 'Estradas locais. Grandes dias.',
+      title: 'Vá onde',
+      accent: 'a estrada se abre',
+      description: 'Viagens personalizadas por Uttarakhand com um guia local. Tours, alugueres, rafting e planos flexíveis.',
+      primary: 'Planear com Mangal',
+      secondary: 'Ver rotas',
+    },
+    services: {
+      kicker: '01 / Serviços',
+      title: 'Traga a ideia.',
+      accent: 'Encontraremos o caminho.',
+      description: 'Pode chegar com uma rota completa ou apenas com vontade de montanha. Ambos são um bom começo.',
+      enquire: 'Conte-nos o que procura',
+    },
+    routes: {
+      kicker: '02 / Rotas',
+      title: 'Alguns bons',
+      accent: 'lugares para começar.',
+      description: 'Pontos de partida, não pacotes. Diga-nos o que quer aproveitar e o que prefere evitar.',
+      action: 'Criar esta rota',
+    },
+    reviews: {
+      kicker: '03 / Opiniões de viajantes',
+      title: 'As boas viagens',
+      accent: 'ficam consigo.',
+      description: 'Leia as avaliações no Google ou partilhe a sua experiência.',
+      read: 'Ler avaliações no Google',
+      leave: 'Deixar uma avaliação no Google',
+    },
+    enquiry: {
+      kicker: '04 / A sua vez',
+      title: 'Vamos criar',
+      accent: 'uma rota juntos.',
+      description: 'Envie alguns detalhes. A sua mensagem abrirá o WhatsApp com Mangal, sem conta nem compromisso.',
+      formTitle: 'Para onde quer ir?',
+      name: 'O seu nome',
+      dates: 'Datas',
+      group: 'Tamanho do grupo',
+      interest: 'Tenho interesse em',
+      note: 'Algo mais que devemos saber?',
+      submit: 'Abrir consulta no WhatsApp',
+    },
+  },
+
+  ja: {
+    nav: { services: 'サービス', routes: 'ルート', reviews: '口コミ', plan: '旅を計画' },
+    hero: {
+      eyebrow: '地元の道。広がる一日。',
+      title: '道が',
+      accent: '開ける場所へ',
+      description: '地元ガイドと巡るウッタラーカンドのオーダーメイド旅行。ツアー、レンタル、ラフティング、自由な旅程をご提案します。',
+      primary: 'マンガルと計画する',
+      secondary: 'ルートを見る',
+    },
+    services: {
+      kicker: '01 / サービス',
+      title: 'アイデアを。',
+      accent: '道は私たちが見つけます。',
+      description: 'しっかりしたルートがある方も、ただ山の空気を楽しみたい方も。どちらも旅の良いスタートです。',
+      enquire: '希望を伝える',
+    },
+    routes: {
+      kicker: '02 / ルート',
+      title: '旅の始まりに',
+      accent: 'おすすめの場所。',
+      description: 'パッケージではなく、旅の出発点です。楽しみたいこと、避けたいことを教えてください。',
+      action: 'このルートを作る',
+    },
+    reviews: {
+      kicker: '03 / 旅行者の口コミ',
+      title: '良い旅は',
+      accent: '心に残ります。',
+      description: 'Googleで旅行者の口コミを読んだり、ご自身の体験を共有できます。',
+      read: 'Googleの口コミを見る',
+      leave: 'Googleに口コミを書く',
+    },
+    enquiry: {
+      kicker: '04 / あなたの番',
+      title: '一緒に',
+      accent: 'ルートを作りましょう。',
+      description: 'いくつかの詳細を送ってください。アカウントや予約なしで、マンガルとのWhatsApp会話が始まります。',
+      formTitle: 'どこへ行きたいですか？',
+      name: 'お名前',
+      dates: '日程',
+      group: '人数',
+      interest: '興味があるもの',
+      note: 'その他に伝えておきたいこと',
+      submit: 'WhatsAppで問い合わせる',
+    },
+  },
+
+  zh: {
+    nav: { services: '服务', routes: '路线', reviews: '评价', plan: '规划旅行' },
+    hero: {
+      eyebrow: '当地道路。精彩旅程。',
+      title: '去往',
+      accent: '道路展开的地方',
+      description: '由当地向导带你探索北阿坎德邦。提供定制旅行、车辆租赁、漂流和灵活的行程规划。',
+      primary: '与 Mangal 一起规划',
+      secondary: '查看路线',
+    },
+    services: {
+      kicker: '01 / 服务',
+      title: '带上你的想法。',
+      accent: '我们来寻找路线。',
+      description: '你可以带着完整的路线来，也可以只是想感受山间空气。两者都是很好的开始。',
+      enquire: '告诉我们你的想法',
+    },
+    routes: {
+      kicker: '02 / 路线',
+      title: '一些不错的',
+      accent: '旅行起点。',
+      description: '这里是旅行灵感，而不是固定套餐。告诉我们你想体验什么，以及想避开什么。',
+      action: '规划这条路线',
+    },
+    reviews: {
+      kicker: '03 / 旅行者评价',
+      title: '美好的旅程',
+      accent: '值得一直记住。',
+      description: '在 Google 上阅读旅行者评价，或分享你的旅行体验。',
+      read: '阅读 Google 评价',
+      leave: '留下 Google 评价',
+    },
+    enquiry: {
+      kicker: '04 / 轮到你了',
+      title: '一起规划',
+      accent: '一段旅程。',
+      description: '发送一些旅行信息。你的消息会直接打开 WhatsApp 联系 Mangal，无需账号，也没有任何承诺。',
+      formTitle: '你想去哪里？',
+      name: '你的名字',
+      dates: '日期',
+      group: '人数',
+      interest: '我感兴趣的是',
+      note: '还有什么需要告诉我们？',
+      submit: '打开 WhatsApp 咨询',
+    },
 };
 
 function getCopy(language: LanguageCode): Copy {
