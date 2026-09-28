@@ -1,5 +1,4 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   ArrowDownRight,
   ArrowRight,
@@ -16,23 +15,17 @@ import {
   Phone,
   Send,
   Sparkles,
-  Star,
   Waves,
   X,
 } from 'lucide-react';
-import {
-  getListReviewsQueryKey,
-  useCreateReview,
-  useListReviews,
-} from '@workspace/api-client-react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import { Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 
-const queryClient = new QueryClient();
 const WHATSAPP_NUMBER = '918077016559';
+const GOOGLE_REVIEWS_URL = 'https://maps.app.goo.gl/JuhvMkETd4GjBYkY7?g_st=ac';
 
 type LanguageCode =
   | 'en'
@@ -74,7 +67,7 @@ type Copy = {
   hero: { eyebrow: string; title: string; accent: string; description: string; primary: string; secondary: string };
   services: { kicker: string; title: string; accent: string; description: string; enquire: string };
   routes: { kicker: string; title: string; accent: string; description: string; action: string };
-  reviews: { kicker: string; title: string; accent: string; description: string; formTitle: string; name: string; rating: string; comment: string; submit: string; success: string; empty: string };
+  reviews: { kicker: string; title: string; accent: string; description: string; read: string; leave: string };
   enquiry: { kicker: string; title: string; accent: string; description: string; formTitle: string; name: string; dates: string; group: string; interest: string; note: string; submit: string };
 };
 
@@ -110,14 +103,9 @@ const baseCopy: Copy = {
     kicker: '03 / Traveller notes',
     title: 'Good trips',
     accent: 'stay with you.',
-    description: 'Have you travelled with Garhwal Tour N Adventure? Share a note for the next traveller.',
-    formTitle: 'Leave a review',
-    name: 'Your name',
-    rating: 'Your rating',
-    comment: 'Your experience',
-    submit: 'Post review',
-    success: 'Thank you for sharing your experience.',
-    empty: 'Be the first traveller to share a note.',
+    description: 'Read what travellers say, or share your experience on Google.',
+    read: 'Read Google Reviews',
+    leave: 'Leave a Google Review',
   },
   enquiry: {
     kicker: '04 / Your turn',
@@ -140,10 +128,10 @@ const localizedCopy: Partial<Record<LanguageCode, DeepPartial<Copy>>> = {
     hero: { eyebrow: 'स्थानीय रास्ते। बड़े दिन।', title: 'जहाँ', accent: 'रास्ता खुलता है', description: 'उत्तराखंड की व्यक्तिगत यात्राएँ — टूर, किराये की गाड़ियाँ, राफ्टिंग और आपकी पसंद के अनुसार योजना।', primary: 'मंगल के साथ योजना बनाएँ', secondary: 'रूट देखें' },
     services: { kicker: '01 / हमारी सेवाएँ', title: 'बस विचार लाइए।', accent: 'रास्ता हम ढूँढेंगे।', description: 'पूरा रूट हो या बस पहाड़ों की हवा की इच्छा — हर यात्रा की शुरुआत यहीं से होती है।', enquire: 'पूछताछ करें' },
     routes: { kicker: '02 / रूट सुझाव', title: 'कुछ अच्छे', accent: 'शुरुआती रास्ते।', description: 'ये पैकेज नहीं, शुरुआत के विचार हैं। अपनी पसंद हमें बताइए।', action: 'यह रूट बनाएँ' },
-    reviews: { kicker: '03 / यात्रियों की बातें', title: 'अच्छी यात्राएँ', accent: 'हमेशा साथ रहती हैं।', description: 'क्या आपने हमारे साथ यात्रा की? अगले यात्री के लिए अपना अनुभव लिखें।', formTitle: 'समीक्षा लिखें', name: 'आपका नाम', rating: 'आपकी रेटिंग', comment: 'आपका अनुभव', submit: 'समीक्षा पोस्ट करें', success: 'अपना अनुभव साझा करने के लिए धन्यवाद।', empty: 'पहली समीक्षा आप लिखें।' },
+    reviews: { kicker: '03 / यात्रियों की बातें', title: 'अच्छी यात्राएँ', accent: 'हमेशा साथ रहती हैं।', description: 'Google पर यात्रियों की बातें पढ़ें या अपना अनुभव साझा करें।' },
     enquiry: { kicker: '04 / आपकी बारी', title: 'एक', accent: 'रूट साथ बनाएँ।', description: 'कुछ जानकारी भेजें। आपका संदेश मंगल के WhatsApp पर खुलेगा — बिना अकाउंट, बिना दबाव।', formTitle: 'कहाँ जाना है?', name: 'आपका नाम', dates: 'तारीखें', group: 'लोगों की संख्या', interest: 'मेरी रुचि है', note: 'कुछ और बताना है?', submit: 'WhatsApp पूछताछ खोलें' },
   },
-  bn: { nav: { services: 'পরিষেবা', routes: 'রুট নোট', reviews: 'পর্যালোচনা', plan: 'ভ্রমণ পরিকল্পনা' }, hero: { eyebrow: 'স্থানীয় পথ। বড় দিন।', title: 'যেখানে', accent: 'পথ খুলে যায়', description: 'উত্তরাখণ্ডের ব্যক্তিগত ভ্রমণ — ট্যুর, গাড়ি ও বাইক ভাড়া, রাফটিং এবং আপনার মতো করে পরিকল্পনা।', primary: 'মঙ্গলের সাথে পরিকল্পনা করুন', secondary: 'রুট দেখুন' }, reviews: { kicker: '03 / ভ্রমণকারীর কথা', title: 'ভালো ভ্রমণ', accent: 'মনে থেকে যায়।', formTitle: 'পর্যালোচনা লিখুন', submit: 'পর্যালোচনা পোস্ট করুন', success: 'আপনার অভিজ্ঞতা শেয়ার করার জন্য ধন্যবাদ।', empty: 'প্রথম পর্যালোচনা লিখুন।' } },
+  bn: { nav: { services: 'পরিষেবা', routes: 'রুট নোট', reviews: 'পর্যালোচনা', plan: 'ভ্রমণ পরিকল্পনা' }, hero: { eyebrow: 'স্থানীয় পথ। বড় দিন।', title: 'যেখানে', accent: 'পথ খুলে যায়', description: 'উত্তরাখণ্ডের ব্যক্তিগত ভ্রমণ — ট্যুর, গাড়ি ও বাইক ভাড়া, রাফটিং এবং আপনার মতো করে পরিকল্পনা।', primary: 'মঙ্গলের সাথে পরিকল্পনা করুন', secondary: 'রুট দেখুন' }, reviews: { kicker: '03 / ভ্রমণকারীর কথা', title: 'ভালো ভ্রমণ', accent: 'মনে থেকে যায়।', description: 'Google-এ ভ্রমণকারীদের কথা পড়ুন বা নিজের অভিজ্ঞতা শেয়ার করুন।' } },
   mr: { nav: { services: 'सेवा', routes: 'मार्ग सूचना', reviews: 'अभिप्राय', plan: 'प्रवास आखणी' }, hero: { eyebrow: 'स्थानिक रस्ते. मोठे दिवस.', title: 'जिथे', accent: 'रस्ता खुलतो', description: 'उत्तराखंडमधील वैयक्तिक प्रवास — टूर, वाहन भाडे, राफ्टिंग आणि तुमच्या आवडीची आखणी.', primary: 'मंगलसोबत आखणी करा', secondary: 'मार्ग पहा' } },
   gu: { nav: { services: 'સેવાઓ', routes: 'રૂટ સૂચનો', reviews: 'સમીક્ષાઓ', plan: 'પ્રવાસનું આયોજન' }, hero: { eyebrow: 'સ્થાનિક રસ્તા. મોટા દિવસો.', title: 'જ્યાં', accent: 'રસ્તો ખુલે', description: 'ઉત્તરાખંડની તમારી પોતાની મુસાફરી — ટૂર, કાર અને બાઇક ભાડે, રાફ્ટિંગ અને તમારી પસંદગીનું આયોજન.', primary: 'મંગલ સાથે આયોજન કરો', secondary: 'રૂટ જુઓ' } },
   pa: { nav: { services: 'ਸੇਵਾਵਾਂ', routes: 'ਰੂਟ ਸੁਝਾਅ', reviews: 'ਸਮੀਖਿਆਵਾਂ', plan: 'ਯਾਤਰਾ ਬਣਾਓ' }, hero: { eyebrow: 'ਸਥਾਨਕ ਰਸਤੇ। ਵੱਡੇ ਦਿਨ।', title: 'ਜਿੱਥੇ', accent: 'ਰਾਹ ਖੁੱਲ੍ਹਦਾ ਹੈ', description: 'ਉੱਤਰਾਖੰਡ ਦੀਆਂ ਨਿੱਜੀ ਯਾਤਰਾਵਾਂ — ਟੂਰ, ਕਿਰਾਏ ਦੀਆਂ ਗੱਡੀਆਂ, ਰਾਫਟਿੰਗ ਅਤੇ ਤੁਹਾਡੀ ਪਸੰਦ ਅਨੁਸਾਰ ਯੋਜਨਾ।', primary: 'ਮੰਗਲ ਨਾਲ ਯੋਜਨਾ ਬਣਾਓ', secondary: 'ਰੂਟ ਵੇਖੋ' } },
@@ -227,12 +215,8 @@ function Home() {
   const [language, setLanguage] = useState<LanguageCode>('en');
   const [trip, setTrip] = useState('');
   const [sent, setSent] = useState(false);
-  const [reviewSent, setReviewSent] = useState(false);
-  const [reviewError, setReviewError] = useState('');
   const copy = getCopy(language);
   const items = navItems(copy);
-  const reviewsQuery = useListReviews({ query: { queryKey: getListReviewsQueryKey(), staleTime: 1000 * 60 * 5 } });
-  const reviewMutation = useCreateReview();
 
   useEffect(() => {
     setLanguage(detectLanguage());
@@ -264,23 +248,6 @@ function Home() {
     setSent(true);
   };
 
-  const submitReview = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setReviewError('');
-    const form = new FormData(event.currentTarget);
-    reviewMutation.mutate(
-      { data: { name: String(form.get('reviewerName') || ''), rating: Number(form.get('rating') || 5), comment: String(form.get('review') || '') } },
-      {
-        onSuccess: () => {
-          setReviewSent(true);
-          void queryClient.invalidateQueries({ queryKey: getListReviewsQueryKey() });
-          event.currentTarget.reset();
-        },
-        onError: () => setReviewError('Please check the details and try again.'),
-      },
-    );
-  };
-
   const closeMenu = () => setMenuOpen(false);
 
   return (
@@ -310,7 +277,7 @@ function Home() {
 
         <section id="route-notes" className="scroll-mt-10 overflow-hidden bg-[#15322f] py-20 text-[#fffaf0] md:py-24"><div className="mx-auto max-w-[1240px] px-5 lg:px-8"><div className="flex flex-col justify-between gap-8 md:flex-row md:items-end"><div><p className="font-mono-custom text-[10px] uppercase tracking-[0.23em] text-[#f8c75a]">{copy.routes.kicker}</p><h2 className="mt-5 max-w-[640px] font-display text-5xl leading-[.93] tracking-[-.04em] md:text-7xl">{copy.routes.title}<br /><span className="italic text-[#f8c75a]">{copy.routes.accent}</span></h2></div><p className="max-w-[300px] text-sm leading-6 text-[#b7ccc0]">{copy.routes.description}</p></div><div className="mt-12 grid gap-5 md:grid-cols-3">{routes.map((route, index) => <a href="#enquire" key={route.name} onClick={() => setTrip(route.name)} data-testid={`card-route-${index}`} className="route-card group overflow-hidden rounded-[1.4rem] border border-white/10 bg-[#1d443f]"><div className="relative min-h-[190px] overflow-hidden"><img src={route.image} alt="" className="route-image h-full w-full object-cover opacity-85" /><div className="absolute inset-0 bg-gradient-to-t from-[#15322f]/75 to-transparent" /><span className={`absolute left-5 top-5 rounded-full px-3 py-1.5 font-mono-custom text-[9px] uppercase tracking-[0.13em] ${route.accent === 'clay' ? 'bg-[#e75b3b] text-white' : route.accent === 'moss' ? 'bg-[#dfe8d4] text-[#15322f]' : 'bg-[#f8c75a] text-[#15322f]'}`}>{route.days}</span></div><div className="flex min-h-[190px] flex-col justify-between p-6"><div><p className="font-mono-custom text-[10px] uppercase tracking-[0.14em] text-[#b7ccc0]">{route.eyebrow}</p><h3 className="mt-4 font-display text-3xl leading-[.95] tracking-[-.03em] text-[#fffaf0]">{route.name}</h3><p className="mt-4 text-sm leading-6 text-[#b7ccc0]">{route.copy}</p></div><span className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-[#f8c75a]">{copy.routes.action} <ArrowRight size={15} className="transition group-hover:translate-x-1" /></span></div></a>)}</div></div></section>
 
-        <section id="reviews" className="scroll-mt-10 bg-[#e6eee5] py-20 md:py-24"><div className="mx-auto grid max-w-[1240px] gap-10 px-5 lg:grid-cols-[.85fr_1.15fr] lg:px-8"><div><p className="font-mono-custom text-[10px] uppercase tracking-[0.23em] text-[#e75b3b]">{copy.reviews.kicker}</p><h2 className="mt-5 max-w-[500px] font-display text-5xl leading-[.93] tracking-[-.04em] md:text-7xl">{copy.reviews.title}<br /><span className="italic text-[#e75b3b]">{copy.reviews.accent}</span></h2><p className="mt-7 max-w-[420px] text-base leading-7 text-[#56736b]">{copy.reviews.description}</p><div className="mt-8 rounded-2xl border border-[#b5cdbb] bg-[#fffaf0]/60 p-5"><p className="font-display text-3xl italic">{reviewsQuery.data?.length ? `${reviewsQuery.data.length} traveller ${reviewsQuery.data.length === 1 ? 'note' : 'notes'}` : 'Your story could be first.'}</p><p className="mt-2 text-xs leading-5 text-[#56736b]">Reviews are posted directly here after you submit them.</p></div></div><div className="grid gap-5 sm:grid-cols-2"><div className="rounded-[1.4rem] bg-[#fffaf0] p-6 shadow-[0_15px_40px_rgba(21,50,47,0.08)]"><div className="flex items-center gap-1 text-[#e75b3b]" aria-label="Five star rating">{[1, 2, 3, 4, 5].map((star) => <Star key={star} size={15} fill="currentColor" />)}</div>{reviewsQuery.data && reviewsQuery.data.length > 0 ? <div className="mt-7 space-y-5">{reviewsQuery.data.slice(0, 3).map((review) => <article key={review.id} className="border-b border-[#d9dfd2] pb-5 last:border-0 last:pb-0"><div className="flex items-center justify-between gap-2"><p className="text-sm font-extrabold">{review.name}</p><span className="flex items-center gap-0.5 text-[#e75b3b]" aria-label={`${review.rating} out of 5 stars`}>{[1, 2, 3, 4, 5].map((star) => <Star key={star} size={11} fill={star <= review.rating ? 'currentColor' : 'none'} />)}</span></div><p className="mt-2 text-sm leading-6 text-[#56736b]">“{review.comment}”</p></article>)}</div> : <p className="mt-7 text-sm leading-6 text-[#56736b]">{copy.reviews.empty}</p>}</div><div className="rounded-[1.4rem] bg-[#15322f] p-6 text-[#fffaf0]"><div className="flex items-center gap-2"><Star size={17} className="text-[#f8c75a]" fill="currentColor" /><h3 className="font-display text-3xl italic">{copy.reviews.formTitle}</h3></div>{reviewSent ? <div className="flex min-h-[250px] flex-col justify-center"><span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#dfe8d4] text-[#15322f]"><Check size={21} /></span><p className="mt-5 text-sm leading-6 text-[#dce7dc]">{copy.reviews.success}</p><button type="button" onClick={() => setReviewSent(false)} className="mt-5 self-start text-xs font-bold text-[#f8c75a] underline underline-offset-4">Post another review</button></div> : <form onSubmit={submitReview} className="mt-6 space-y-4"><label className="block"><span className="mb-2 block text-xs font-bold text-[#dce7dc]">{copy.reviews.name}</span><input name="reviewerName" required minLength={2} maxLength={80} className="w-full rounded-xl border border-white/15 bg-white/10 px-3 py-2.5 text-sm text-white outline-none placeholder:text-[#8eb0a0] focus:border-[#f8c75a]" placeholder="Mangal should know who to thank" /></label><fieldset><legend className="mb-2 block text-xs font-bold text-[#dce7dc]">{copy.reviews.rating}</legend><div className="flex gap-1">{[1, 2, 3, 4, 5].map((star) => <label key={star} className="cursor-pointer"><input type="radio" name="rating" value={star} defaultChecked={star === 5} className="sr-only" /><Star size={21} className="text-[#f8c75a] transition hover:scale-110" fill="currentColor" /></label>)}</div></fieldset><label className="block"><span className="mb-2 block text-xs font-bold text-[#dce7dc]">{copy.reviews.comment}</span><textarea name="review" required minLength={10} maxLength={500} rows={3} className="w-full resize-none rounded-xl border border-white/15 bg-white/10 px-3 py-2.5 text-sm text-white outline-none placeholder:text-[#8eb0a0] focus:border-[#f8c75a]" placeholder="Tell another traveller what stood out" /></label>{reviewError && <p className="text-xs text-[#ffb2a2]">{reviewError}</p>}<button type="submit" disabled={reviewMutation.isPending} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#f8c75a] px-4 py-3 text-sm font-extrabold text-[#15322f] transition hover:bg-[#ffd77c] disabled:cursor-wait disabled:opacity-60">{reviewMutation.isPending ? 'Posting…' : copy.reviews.submit} <ArrowRight size={15} /></button></form>}</div></div></div></section>
+        <section id="reviews" className="scroll-mt-10 bg-[#e6eee5] py-20 md:py-24"><div className="mx-auto grid max-w-[1240px] gap-10 px-5 lg:grid-cols-[.85fr_1.15fr] lg:px-8"><div><p className="font-mono-custom text-[10px] uppercase tracking-[0.23em] text-[#e75b3b]">{copy.reviews.kicker}</p><h2 className="mt-5 max-w-[500px] font-display text-5xl leading-[.93] tracking-[-.04em] md:text-7xl">{copy.reviews.title}<br /><span className="italic text-[#e75b3b]">{copy.reviews.accent}</span></h2><p className="mt-7 max-w-[420px] text-base leading-7 text-[#56736b]">{copy.reviews.description}</p><div className="mt-8 rounded-2xl border border-[#b5cdbb] bg-[#fffaf0]/60 p-5"><p className="font-display text-3xl italic">Google traveller notes</p><p className="mt-2 text-xs leading-5 text-[#56736b]">Read reviews from travellers who have experienced Garhwal Tour N Adventure.</p></div></div><div className="grid gap-5 sm:grid-cols-2"><a href={GOOGLE_REVIEWS_URL} target="_blank" rel="noopener noreferrer" className="group rounded-[1.4rem] bg-[#fffaf0] p-6 shadow-[0_15px_40px_rgba(21,50,47,0.08)] transition hover:-translate-y-1"><div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#e75b3b] text-[#fffaf0]"><ArrowRight size={19} /></div><h3 className="mt-7 font-display text-3xl italic">Read Google Reviews</h3><p className="mt-3 text-sm leading-6 text-[#56736b]">See what other travellers say about their journeys.</p><span className="mt-7 inline-flex items-center gap-2 text-sm font-extrabold text-[#15322f]">{copy.reviews.read} <ArrowRight size={15} className="transition group-hover:translate-x-1" /></span></a><a href={GOOGLE_REVIEWS_URL} target="_blank" rel="noopener noreferrer" className="group rounded-[1.4rem] bg-[#15322f] p-6 text-[#fffaf0] transition hover:-translate-y-1"><div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#f8c75a] text-[#15322f]"><ArrowRight size={19} /></div><h3 className="mt-7 font-display text-3xl italic">Leave a Google Review</h3><p className="mt-3 text-sm leading-6 text-[#b7ccc0]">Your experience can help the next traveller choose their road.</p><span className="mt-7 inline-flex items-center gap-2 text-sm font-extrabold text-[#f8c75a]">{copy.reviews.leave} <ArrowRight size={15} className="transition group-hover:translate-x-1" /></span></a></div></div></section>
 
         <section id="enquire" className="scroll-mt-8 bg-[#e75b3b] py-20 text-[#fffaf0] md:py-24"><div className="mx-auto grid max-w-[1240px] gap-10 px-5 lg:grid-cols-[.8fr_1.2fr] lg:px-8"><div><p className="font-mono-custom text-[10px] uppercase tracking-[0.23em] text-[#f8c75a]">{copy.enquiry.kicker}</p><h2 className="mt-5 max-w-[500px] font-display text-6xl leading-[.88] tracking-[-.05em] md:text-8xl">{copy.enquiry.title}<br /><span className="italic text-[#f8c75a]">{copy.enquiry.accent}</span></h2><p className="mt-7 max-w-[400px] text-base leading-7 text-[#ffe7d7]">{copy.enquiry.description}</p><div className="mt-8 space-y-4 border-t border-white/20 pt-6"><a href="tel:+918077016559" className="flex items-center gap-3 text-sm font-bold transition hover:text-[#f8c75a]"><span className="flex h-9 w-9 items-center justify-center rounded-full border border-white/30"><Phone size={15} /></span> +91 80770 16559</a><button type="button" onClick={() => openWhatsApp('Namaste Mangal, I would like to ask about a Uttarakhand trip.')} className="flex items-center gap-3 text-sm font-bold transition hover:text-[#f8c75a]"><span className="flex h-9 w-9 items-center justify-center rounded-full border border-white/30"><MessageCircle size={15} /></span> WhatsApp Mangal directly</button></div></div><div className="rounded-[1.5rem] bg-[#fffaf0] p-6 text-[#15322f] shadow-[0_25px_60px_rgba(102,32,15,0.18)] md:p-9">{sent ? <div className="flex min-h-[385px] flex-col items-start justify-center"><span className="flex h-14 w-14 items-center justify-center rounded-full bg-[#dfe8d4] text-[#15322f]"><Check size={27} /></span><h3 className="mt-7 font-display text-5xl leading-none">Message<br /><span className="italic text-[#e75b3b]">ready to go.</span></h3><p className="mt-5 max-w-[390px] text-sm leading-6 text-[#56736b]">WhatsApp should be open with your enquiry. If it did not open, use the direct contact above.</p><button type="button" onClick={() => setSent(false)} className="mt-7 inline-flex items-center gap-2 text-sm font-extrabold underline decoration-[#e75b3b] decoration-2 underline-offset-4">Send another enquiry <ArrowRight size={14} /></button></div> : <form onSubmit={submitEnquiry} className="space-y-5"><div className="flex items-start justify-between gap-4 border-b border-[#d9dfd2] pb-5"><div><p className="font-mono-custom text-[10px] uppercase tracking-[0.18em] text-[#e75b3b]">Quick enquiry</p><h3 className="mt-2 font-display text-3xl leading-none">{copy.enquiry.formTitle}</h3></div><Send size={21} className="mt-1 text-[#e75b3b]" /></div><label className="block"><span className="mb-2 block text-xs font-extrabold">{copy.enquiry.name}</span><input name="name" required className="w-full rounded-xl border border-[#cfd9cc] bg-[#f8f4e9] px-4 py-3 text-sm outline-none transition placeholder:text-[#8aa096] focus:border-[#e75b3b] focus:ring-2 focus:ring-[#e75b3b]/15" placeholder="What should we call you?" /></label><div className="grid gap-5 sm:grid-cols-2"><label className="block"><span className="mb-2 block text-xs font-extrabold">{copy.enquiry.dates}</span><input name="dates" className="w-full rounded-xl border border-[#cfd9cc] bg-[#f8f4e9] px-4 py-3 text-sm outline-none transition placeholder:text-[#8aa096] focus:border-[#e75b3b] focus:ring-2 focus:ring-[#e75b3b]/15" placeholder="e.g. 12–18 October" /></label><label className="block"><span className="mb-2 block text-xs font-extrabold">{copy.enquiry.group}</span><input name="group" className="w-full rounded-xl border border-[#cfd9cc] bg-[#f8f4e9] px-4 py-3 text-sm outline-none transition placeholder:text-[#e75b3b] focus:border-[#e75b3b] focus:ring-2 focus:ring-[#e75b3b]/15" placeholder="e.g. 4 adults" /></label></div><label className="block"><span className="mb-2 block text-xs font-extrabold">{copy.enquiry.interest}</span><select name="interest" value={trip} onChange={(event) => setTrip(event.target.value)} className="w-full appearance-none rounded-xl border border-[#cfd9cc] bg-[#f8f4e9] px-4 py-3 text-sm outline-none transition focus:border-[#e75b3b] focus:ring-2 focus:ring-[#e75b3b]/15"><option value="">A little bit of everything</option>{services.map((service) => <option key={service.title}>{service.title}</option>)}{routes.map((route) => <option key={route.name}>{route.name}</option>)}</select></label><label className="block"><span className="mb-2 block text-xs font-extrabold">{copy.enquiry.note}</span><textarea name="note" rows={3} className="w-full resize-none rounded-xl border border-[#cfd9cc] bg-[#f8f4e9] px-4 py-3 text-sm outline-none transition placeholder:text-[#8aa096] focus:border-[#e75b3b] focus:ring-2 focus:ring-[#e75b3b]/15" placeholder="Slow mornings, a short trek, temple visits, rafting..." /></label><button type="submit" className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#15322f] px-5 py-4 text-sm font-extrabold text-[#fffaf0] transition hover:bg-[#28534b]">{copy.enquiry.submit} <ArrowRight size={16} /></button><p className="text-center font-mono-custom text-[9px] uppercase tracking-[0.13em] text-[#789087]">No booking form. Just a direct conversation.</p></form>}</div></div></section>
       </main>
@@ -327,7 +294,7 @@ function Router() {
 }
 
 function App() {
-  return <QueryClientProvider client={queryClient}><TooltipProvider><WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}><Router /></WouterRouter><Toaster /></TooltipProvider></QueryClientProvider>;
+  return <TooltipProvider><WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}><Router /></WouterRouter><Toaster /></TooltipProvider>;
 }
 
 export default App;

@@ -9,37 +9,3 @@ export interface HealthStatus {
   status: string;
 }
 
-export interface Review {
-  id: number;
-  name: string;
-  /**
-     * @minimum 1
-     * @maximum 5
-     */
-  rating: number;
-  comment: string;
-  createdAt: string;
-}
-
-export interface ReviewInput {
-  /**
-     * @minLength 2
-     * @maxLength 80
-     */
-  name: string;
-  /**
-     * @minimum 1
-     * @maximum 5
-     */
-  rating: number;
-  /**
-     * @minLength 10
-     * @maxLength 500
-     */
-  comment: string;
-}
-
-export interface ErrorResponse {
-  error: string;
-}
-
