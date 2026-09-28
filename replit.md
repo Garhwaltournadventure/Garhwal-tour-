@@ -1,44 +1,46 @@
-# [Project name]
+# Garhwal Tour N Adventure
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A static travel website for Uttarakhand tours, rentals, rafting, and custom trip planning with direct WhatsApp enquiries and Google Reviews links.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- `pnpm --filter @workspace/garhwal-tour-adventure run dev` — run the Vite preview
+- `pnpm --filter @workspace/garhwal-tour-adventure run build` — create the static site in `dist/public`
+- `pnpm --filter @workspace/garhwal-tour-adventure run typecheck` — typecheck the frontend
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- React, Vite, and Tailwind CSS
+- Static hosting with no server or database dependency
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/garhwal-tour-adventure/src/App.tsx` — site content and page layout
+- `artifacts/garhwal-tour-adventure/public/` — images and static assets
+- `artifacts/garhwal-tour-adventure/.replit-artifact/artifact.toml` — static production build configuration
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- All enquiries open WhatsApp directly; no form submissions are stored.
+- Reviews link directly to Google Maps; no review data is stored locally.
+- The production artifact serves the Vite build as static files.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- Uttarakhand tours and custom route planning
+- Car, bike, and scooty rentals
+- River rafting enquiries
+- Direct WhatsApp contact
+- Read and leave Google Reviews
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+_None recorded._
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Keep the production service configured as `serve = "static"` in the artifact manifest.
 
 ## Pointers
 
