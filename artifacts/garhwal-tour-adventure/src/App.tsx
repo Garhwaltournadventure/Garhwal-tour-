@@ -332,6 +332,7 @@ const localizedCopy: Partial<Record<LanguageCode, DeepPartial<Copy>>> = {
       note: '还有什么需要告诉我们？',
       submit: '打开 WhatsApp 咨询',
     },
+     },
 };
 
 function getCopy(language: LanguageCode): Copy {
