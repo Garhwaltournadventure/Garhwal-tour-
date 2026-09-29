@@ -368,7 +368,7 @@ const routes = [
   { name: 'Chopta · Nainital · Corbett', eyebrow: 'For the road-curious', days: '5–8 days', copy: 'Mix high valley quiet, lake-country mornings and forest-side stays in one flexible route.', image: '/garhwal-hero.jpg', accent: 'saffron' },
 ];
 
-const BOOKING_APP_URL = 'https://garhwal-app.pages.dev';
+const BOOKING_APP_URL = 'https://garhwal-booking.pages.dev';
 
 const navItems = (copy: Copy) => [
   { href: '#ways-to-go', label: copy.nav.services },
