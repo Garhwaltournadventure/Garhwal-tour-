@@ -38,7 +38,10 @@ async function sendNewBookingPush(env,b){
  const tokens=(rows.results||[]).map(x=>x.token).filter(Boolean);
  let sent=0;
  for(const token of tokens){
-  const body={message:{token,notification:{title:'New Booking '+b.booking_ref,body:b.name+' • '+b.service+' • '+(b.date||'Date not set')+(b.payment_note?' • Note: '+b.payment_note:'')},data:{booking_ref:String(b.booking_ref||''),guest:String(b.name||''),service:String(b.service||''),date:String(b.date||''),pax:String(b.pax||1),title:'New Booking '+b.booking_ref,body:b.name+' • '+b.service+' • '+(b.date||'Date not set')+(b.payment_note?' • Note: '+b.payment_note:'')},android:{priority:'high',notification:{channel_id:'garhwal_bookings_v2',click_action:'com.garhwaltournadventure.booking.OPEN_STAFF'}}}};
+  const details=String(b.details||'').trim();
+  const note=String(b.payment_note||'').trim();
+  const pushBody=b.name+' • '+b.service+' • '+(b.date||'Date not set')+(details?' • Details: '+details:'')+(note?' • Note: '+note:'');
+  const body={message:{token,data:{booking_ref:String(b.booking_ref||''),guest:String(b.name||''),service:String(b.service||''),date:String(b.date||''),pax:String(b.pax||1),details,additional_note:note,title:'New Booking '+b.booking_ref,body:pushBody},android:{priority:'high',notification:{channel_id:'garhwal_bookings_v2',click_action:'com.garhwaltournadventure.booking.OPEN_STAFF'}}}};
   const r=await fetch('https://fcm.googleapis.com/v1/projects/'+encodeURIComponent(sa.project_id)+'/messages:send',{method:'POST',headers:{Authorization:'Bearer '+accessToken,'Content-Type':'application/json'},body:JSON.stringify(body)});
   if(r.ok)sent++;
   else {
