@@ -22,7 +22,7 @@ body{background:white;margin:0}
 
 <section id="booking">
 <div class="notice"><b>Booking Form:</b> Please enter your details and trip/service requirements. Our team will confirm the booking with you.</div>
-<form id="form" onsubmit="submitBooking(event); return false;">
+<form id="form">
 <div class="grid">
 <div class="card"><h2>Company details</h2><div class="fields">
 <div class="field full"><label>Company name</label><input id="company" value="Garhwal Tour N Adventure" required></div>
@@ -64,6 +64,36 @@ body{background:white;margin:0}
 
 <section id="invoice" class="hidden" aria-hidden="true"><div class="actions no-print"><button class="btn dark" onclick="window.print()">Print / Save PDF</button><button class="btn ghost" onclick="showTab('bookings')">Back to bookings</button></div><div id="invoiceBox" class="invoice"><p class="muted">Select an invoice from Bookings.</p></div></section>
 </div>
+<script>
+(function(){
+  const form=document.getElementById('form');
+  if(!form)return;
+  form.addEventListener('submit',async function(e){
+    e.preventDefault();
+    e.stopPropagation();
+    const v=id=>document.getElementById(id).value;
+    const rec={company:v('company'),cphone:v('cphone'),cemail:v('cemail'),msme:v('msme'),name:v('name'),phone:v('phone'),email:v('email'),idtype:v('idtype'),idno:v('idno'),service:v('service'),date:v('date'),pax:v('pax'),details:v('details'),paymentNote:v('paymentNote')};
+    const btn=form.querySelector('button[type="submit"]');
+    if(btn){btn.disabled=true;btn.textContent='Submitting...'}
+    try{
+      const res=await fetch('/api/bookings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(rec)});
+      let data=null;try{data=await res.json()}catch(_){}
+      if(!res.ok)throw new Error((data&&data.error)||('Booking server error ('+res.status+')'));
+      alert('Booking request submitted successfully. Booking reference: '+((data&&data.booking&&data.booking.booking_ref)||'received')+'. Our team will contact you for confirmation.');
+      form.reset();
+      const d=document.getElementById('date');if(d)d.value=new Date().toISOString().slice(0,10);
+      document.getElementById('company').value='Garhwal Tour N Adventure';
+      document.getElementById('cphone').value='+91 80770 16559';
+      document.getElementById('cemail').value='mangaljethuri7@gmail.com';
+      document.getElementById('msme').value='UDYAM-UK-11-0006387';
+    }catch(err){
+      alert('Booking could not be submitted: '+(err&&err.message?err.message:'Unknown error'));
+    }finally{
+      if(btn){btn.disabled=false;btn.textContent='Submit Booking Request'}
+    }
+  });
+})();
+</script>
 <script>
 const $=id=>document.getElementById(id);
 let data=[], current=null, adminPassword='';
