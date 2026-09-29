@@ -22,7 +22,7 @@ body{background:white;margin:0}
 
 <section id="booking">
 <div class="notice"><b>Booking Form:</b> Please enter your details and trip/service requirements. Our team will confirm the booking with you.</div>
-<form id="form">
+<form id="form" onsubmit="submitBooking(event); return false;">
 <div class="grid">
 <div class="card"><h2>Company details</h2><div class="fields">
 <div class="field full"><label>Company name</label><input id="company" value="Garhwal Tour N Adventure" required></div>
@@ -78,17 +78,21 @@ document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>showTab(b.dataset.tab
 if(new URLSearchParams(location.search).get('admin')==='1'){location.replace('/admin.html');}
 $('date').value=new Date().toISOString().slice(0,10);
 
-$('form').onsubmit=async e=>{
+async function submitBooking(e){
 e.preventDefault();
+const form=e.currentTarget||$('form');
 const rec={company:$('company').value,cphone:$('cphone').value,cemail:$('cemail').value,msme:$('msme').value,name:$('name').value,phone:$('phone').value,email:$('email').value,idtype:$('idtype').value,idno:$('idno').value,service:$('service').value,date:$('date').value,pax:$('pax').value,details:$('details').value,paymentNote:$('paymentNote').value};
+const btn=form.querySelector('button[type="submit"]');
+if(btn){btn.disabled=true;btn.textContent='Submitting...'}
 try{
 const res=await fetch('/api/bookings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(rec)});
 let result=null;try{result=await res.json()}catch{}
-if(!res.ok) throw new Error((result&&result.error)||('Booking server error ('+res.status+')'));
+if(!res.ok)throw new Error((result&&result.error)||('Booking server error ('+res.status+')'));
 alert('Booking request submitted successfully. Booking reference: '+((result&&result.booking&&result.booking.booking_ref)||'received')+'. Our team will contact you for confirmation.');
-e.target.reset();$('date').value=new Date().toISOString().slice(0,10);$('company').value='Garhwal Tour N Adventure';$('cphone').value='+91 80770 16559';$('cemail').value='mangaljethuri7@gmail.com';$('msme').value='UDYAM-UK-11-0006387';
-}catch(err){alert('Booking could not be submitted. Please try again or contact us on WhatsApp.');}
-};
+form.reset();$('date').value=new Date().toISOString().slice(0,10);$('company').value='Garhwal Tour N Adventure';$('cphone').value='+91 80770 16559';$('cemail').value='mangaljethuri7@gmail.com';$('msme').value='UDYAM-UK-11-0006387';
+}catch(err){alert('Booking could not be submitted: '+(err&&err.message?err.message:'Unknown error'))}
+finally{if(btn){btn.disabled=false;btn.textContent='Submit Booking Request'}}
+}
 
 $('adminLoginBtn').onclick=async()=>{
 adminPassword=$('adminPassword').value;
