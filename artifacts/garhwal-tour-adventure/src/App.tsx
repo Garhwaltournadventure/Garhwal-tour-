@@ -521,7 +521,7 @@ function TravelAIAssistant() {
         <button aria-label="Close travel assistant" onClick={()=>setOpen(false)} className="rounded-full p-2 hover:bg-white/10"><X size={18}/></button>
       </div>
       <div className="flex-1 space-y-3 overflow-y-auto p-3">
-        {messages.map((m,i)=><div key={i} className={m.role==='user'?'ml-8 rounded-2xl rounded-br-sm bg-[#f36b08] px-3 py-2 text-sm text-white':'mr-8 rounded-2xl rounded-bl-sm bg-[#e8eee8] px-3 py-2 text-sm text-[#15322f]'}>{m.text}</div>)}
+        {messages.map((m,i)=><div key={i} className={m.role==='user'?'ml-8 whitespace-pre-line rounded-2xl rounded-br-sm bg-[#f36b08] px-3 py-2 text-sm leading-6 text-white':'mr-8 whitespace-pre-line rounded-2xl rounded-bl-sm bg-[#e8eee8] px-3 py-2 text-sm leading-6 text-[#15322f]'}>{m.text}</div>)}
         {loading && <div className="mr-8 rounded-2xl bg-[#e8eee8] px-3 py-2 text-sm text-[#15322f]">Checking travel information…</div>}
       </div>
       <form onSubmit={ask} className="flex gap-2 border-t border-[#d7ded3] p-3">
