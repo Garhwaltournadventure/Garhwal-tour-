@@ -31,7 +31,7 @@ public class BookingMessagingService extends FirebaseMessagingService {
 
         NotificationManager nm = getSystemService(NotificationManager.class);
         if (Build.VERSION.SDK_INT >= 26) {
-            NotificationChannel channel = new NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "Booking Notifications", NotificationManager.IMPORTANCE_HIGH);
+            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "Booking Notifications", NotificationManager.IMPORTANCE_HIGH);
             channel.setDescription("New Garhwal Tour N Adventure bookings");
             channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
             channel.enableVibration(true);
