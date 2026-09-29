@@ -27,6 +27,8 @@ import { Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 const WHATSAPP_NUMBER = '918077016559';
 const GOOGLE_REVIEWS_URL = 'https://maps.app.goo.gl/JuhvMkETd4GjBYkY7?g_st=ac';
 
+type TravelData = { route?: { origin:string; destination:string; distanceKm:number; durationMinutes:number; durationText:string; routeSummary:string; mapsUrl:string } | null; weather?: { place:string; temperature:number; feelsLike:number; precipitation:number; wind:number; condition:string; time:string; timezone:string } | null };
+
 type LanguageCode =
   | 'en'
   | 'hi'
@@ -489,7 +491,7 @@ function Home() {
 function TravelAIAssistant() {
   const [open,setOpen]=useState(false);
   const [question,setQuestion]=useState('');
-  const [messages,setMessages]=useState<{role:'user'|'assistant';text:string;mapsUrl?:string}[]>([
+  const [messages,setMessages]=useState<{role:'user'|'assistant';text:string;travelData?:TravelData|null}[]>([
     {role:'assistant',text:'Namaste! I am your Garhwal travel assistant. Ask me about routes, distances, travel time, sightseeing or itinerary ideas.'}
   ]);
   const [loading,setLoading]=useState(false);
@@ -508,7 +510,7 @@ function TravelAIAssistant() {
         body:JSON.stringify({message:q})
       });
       const data=await r.json();
-      setMessages(m=>[...m,{role:'assistant',text:data.answer||(data.detail?('AI error: '+data.detail):null)||data.error||'Sorry, I could not answer that right now.',mapsUrl:data.maps_url||undefined}]);
+      setMessages(m=>[...m,{role:'assistant',text:data.answer||(data.detail?('AI error: '+data.detail):null)||data.error||'Sorry, I could not answer that right now.',travelData:data.travel_data||null}]);
     }catch{
       setMessages(m=>[...m,{role:'assistant',text:'The travel assistant is temporarily unavailable. Please use WhatsApp to speak with us directly.'}]);
     }finally{setLoading(false);}
@@ -521,7 +523,7 @@ function TravelAIAssistant() {
         <button aria-label="Close travel assistant" onClick={()=>setOpen(false)} className="rounded-full p-2 hover:bg-white/10"><X size={18}/></button>
       </div>
       <div className="flex-1 space-y-3 overflow-y-auto p-3">
-        {messages.map((m,i)=><div key={i} className={m.role==='user'?'ml-8 whitespace-pre-line rounded-2xl rounded-br-sm bg-[#f36b08] px-3 py-2 text-sm leading-6 text-white':'mr-8 whitespace-pre-line rounded-2xl rounded-bl-sm bg-[#e8eee8] px-3 py-2 text-sm leading-6 text-[#15322f]'}>{m.text}{m.mapsUrl&&<a href={m.mapsUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center rounded-lg bg-[#15322f] px-3 py-2 text-[11px] font-extrabold text-white">Open route in Google Maps</a>}{m.role==='assistant'&&i>0&&<div className="mt-3 border-t border-[#cbd8cc] pt-2 text-[10px] leading-4 text-[#60786e]"><div className="font-extrabold text-[#15322f]">Garhwal Tour N Adventure</div><div>Uttarakhand, India</div><div>WhatsApp: +91 80770 16559</div><div>MSME: UDYAM-UK-11-0006387</div></div>}</div>)}
+        {messages.map((m,i)=><div key={i} className={m.role==='user'?'ml-8 whitespace-pre-line rounded-2xl rounded-br-sm bg-[#f36b08] px-3 py-2 text-sm leading-6 text-white':'mr-8 rounded-2xl rounded-bl-sm bg-[#e8eee8] px-3 py-2 text-sm text-[#15322f]'}><div className="whitespace-pre-line leading-6">{m.text}</div>{m.travelData?.route&&<div className="mt-3 rounded-xl border border-[#cbd8cc] bg-white/70 p-3 text-xs"><div className="font-extrabold">Route data</div><div className="mt-1">Distance: {m.travelData.route.distanceKm} km</div><div>Route time: {m.travelData.route.durationText}</div><div className="text-[10px] text-[#60786e]">OpenStreetMap routing · not live traffic</div><a href={m.travelData.route.mapsUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex rounded-lg bg-[#15322f] px-3 py-2 font-bold text-white">Open Google Maps</a></div>}{m.travelData?.weather&&<div className="mt-3 rounded-xl border border-[#cbd8cc] bg-white/70 p-3 text-xs"><div className="font-extrabold">Current weather · {m.travelData.weather.place}</div><div className="mt-1">{m.travelData.weather.condition} · {m.travelData.weather.temperature}°C</div><div>Feels like: {m.travelData.weather.feelsLike}°C</div><div>Wind: {m.travelData.weather.wind} km/h</div><div>Precipitation: {m.travelData.weather.precipitation} mm</div><div className="mt-1 text-[10px] text-[#60786e]">Open-Meteo · {m.travelData.weather.time}</div></div>}{m.role==='assistant'&&i>0&&<div className="mt-3 border-t border-[#cbd8cc] pt-2 text-[10px] leading-4 text-[#60786e]"><div className="font-extrabold text-[#15322f]">Garhwal Tour N Adventure</div><div>Uttarakhand, India</div><div>WhatsApp: +91 80770 16559</div><div>MSME: UDYAM-UK-11-0006387</div></div>}</div>)}
         {loading && <div className="mr-8 rounded-2xl bg-[#e8eee8] px-3 py-2 text-sm text-[#15322f]">Checking travel information…</div>}
       </div>
       <form onSubmit={ask} className="flex gap-2 border-t border-[#d7ded3] p-3">
