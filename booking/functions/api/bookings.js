@@ -3,6 +3,41 @@ function auth(request,env){
  const configuredPassword=env.ADMIN_PASSWORD||env["ADMIN-PASSWORD"];
  return !!configuredPassword && request.headers.get('x-admin-password')===configuredPassword;
 }
+function corsJson(data,status=200){
+ return new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json','cache-control':'no-store'}});
+}
+async function sendConfirmationEmail(env,b){
+ const apiKey=env.RESEND_API_KEY;
+ if(!apiKey || !b.email)return {sent:false,reason:'email_not_configured_or_missing_guest_email'};
+ const from=env.NOTIFY_FROM;
+ if(!from)return {sent:false,reason:'notify_from_not_configured'};
+ const subject='Booking '+b.booking_ref+' — '+b.status;
+ const text=[
+  'Garhwal Tour N Adventure',
+  'Travel Beyond Borders',
+  '',
+  'Booking Confirmation',
+  'Booking: '+b.booking_ref,
+  'Guest: '+b.name,
+  'Phone: '+b.phone,
+  'Service: '+b.service,
+  'Date: '+(b.date||'—'),
+  'Pax: '+(b.pax||1),
+  'Vehicle: '+(b.vehicle||'To be confirmed'),
+  'Driver: '+(b.driver||'To be confirmed'),
+  'Driver Phone: '+(b.driver_phone||'To be confirmed'),
+  'Details: '+(b.details||'—'),
+  'Status: '+b.status,
+  'Price (GST incl.): ₹'+Number(b.price||0).toLocaleString('en-IN'),
+  'Advance: ₹'+Number(b.advance||0).toLocaleString('en-IN'),
+  'Balance: ₹'+Math.max(0,Number(b.price||0)-Number(b.paid||0)).toLocaleString('en-IN'),
+  '',
+  'Thank you for choosing Garhwal Tour N Adventure.',
+  '+91 80770 16559'
+ ].join('\n');
+ const r=await fetch('https://api.resend.com/emails',{method:'POST',headers:{'Authorization':'Bearer '+apiKey,'Content-Type':'application/json'},body:JSON.stringify({from,to:[b.email],subject,text})});
+ return {sent:r.ok,status:r.status};
+}
 function id(){return crypto.randomUUID()}
 function ref(){return 'GTA-'+new Date().getFullYear()+'-'+Date.now().toString().slice(-6)}
 export async function onRequest(context){
@@ -27,7 +62,10 @@ export async function onRequest(context){
   let b;try{b=await request.json()}catch{return json({error:'Invalid JSON'},400)}
   const price=Number(b.price||0),advance=Number(b.advance||0),received=Number(b.received||0),paid=Math.min(price,advance+received),gst=price-price/1.05;
   await env.DB.prepare('UPDATE bookings SET status=?,vehicle=?,driver=?,driver_phone=?,price=?,advance=?,received=?,paid=?,mode=?,paidto=?,gst=?,admin_note=? WHERE id=?').bind(b.status||'New',b.vehicle||'',b.driver||'',b.driver_phone||'',price,advance,received,paid,b.mode||'UPI',b.paidto||'Owner',gst,b.admin_note||'',bid).run();
-  return json({booking:await env.DB.prepare('SELECT * FROM bookings WHERE id=?').bind(bid).first()});
+  const saved=await env.DB.prepare('SELECT * FROM bookings WHERE id=?').bind(bid).first();
+  let notification=null;
+  if((b.notify_email||false)===true && saved.email){try{notification=await sendConfirmationEmail(env,saved)}catch(e){notification={sent:false,reason:'email_send_error'}}}
+  return json({booking:saved,notification});
  }
  if(method==='DELETE'){await env.DB.prepare('DELETE FROM bookings WHERE id=?').bind(bid).run();return json({ok:true})}
  return json({error:'Method not allowed'},405);
