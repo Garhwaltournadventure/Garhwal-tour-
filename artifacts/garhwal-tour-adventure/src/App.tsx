@@ -479,10 +479,60 @@ function Home() {
         <section id="enquire" className="scroll-mt-8 bg-[#e75b3b] py-20 text-[#fffaf0] md:py-24"><div className="mx-auto grid max-w-[1240px] gap-10 px-5 lg:grid-cols-[.8fr_1.2fr] lg:px-8"><div><p className="font-mono-custom text-[10px] uppercase tracking-[0.23em] text-[#f8c75a]">{copy.enquiry.kicker}</p><h2 className="mt-5 max-w-[500px] font-display text-6xl leading-[.88] tracking-[-.05em] md:text-8xl">{copy.enquiry.title}<br /><span className="italic text-[#f8c75a]">{copy.enquiry.accent}</span></h2><p className="mt-7 max-w-[400px] text-base leading-7 text-[#ffe7d7]">{copy.enquiry.description}</p><div className="mt-8 space-y-4 border-t border-white/20 pt-6"><a href="tel:+918077016559" className="flex items-center gap-3 text-sm font-bold transition hover:text-[#f8c75a]"><span className="flex h-9 w-9 items-center justify-center rounded-full border border-white/30"><Phone size={15} /></span> +91 80770 16559</a><button type="button" onClick={() => openWhatsApp('Namaste Mangal, I would like to ask about a Uttarakhand trip.')} className="flex items-center gap-3 text-sm font-bold transition hover:text-[#f8c75a]"><span className="flex h-9 w-9 items-center justify-center rounded-full border border-white/30"><MessageCircle size={15} /></span> WhatsApp Mangal directly</button></div></div><div className="rounded-[1.5rem] bg-[#fffaf0] p-6 text-[#15322f] shadow-[0_25px_60px_rgba(102,32,15,0.18)] md:p-9">{sent ? <div className="flex min-h-[385px] flex-col items-start justify-center"><span className="flex h-14 w-14 items-center justify-center rounded-full bg-[#dfe8d4] text-[#15322f]"><Check size={27} /></span><h3 className="mt-7 font-display text-5xl leading-none">Message<br /><span className="italic text-[#e75b3b]">ready to go.</span></h3><p className="mt-5 max-w-[390px] text-sm leading-6 text-[#56736b]">WhatsApp should be open with your enquiry. If it did not open, use the direct contact above.</p><button type="button" onClick={() => setSent(false)} className="mt-7 inline-flex items-center gap-2 text-sm font-extrabold underline decoration-[#e75b3b] decoration-2 underline-offset-4">Send another enquiry <ArrowRight size={14} /></button></div> : <form onSubmit={submitEnquiry} className="space-y-5"><div className="flex items-start justify-between gap-4 border-b border-[#d9dfd2] pb-5"><div><p className="font-mono-custom text-[10px] uppercase tracking-[0.18em] text-[#e75b3b]">Quick enquiry</p><h3 className="mt-2 font-display text-3xl leading-none">{copy.enquiry.formTitle}</h3></div><Send size={21} className="mt-1 text-[#e75b3b]" /></div><label className="block"><span className="mb-2 block text-xs font-extrabold">{copy.enquiry.name}</span><input name="name" required className="w-full rounded-xl border border-[#cfd9cc] bg-[#f8f4e9] px-4 py-3 text-sm outline-none transition placeholder:text-[#8aa096] focus:border-[#e75b3b] focus:ring-2 focus:ring-[#e75b3b]/15" placeholder="What should we call you?" /></label><div className="grid gap-5 sm:grid-cols-2"><label className="block"><span className="mb-2 block text-xs font-extrabold">{copy.enquiry.dates}</span><input name="dates" className="w-full rounded-xl border border-[#cfd9cc] bg-[#f8f4e9] px-4 py-3 text-sm outline-none transition placeholder:text-[#8aa096] focus:border-[#e75b3b] focus:ring-2 focus:ring-[#e75b3b]/15" placeholder="e.g. 12–18 October" /></label><label className="block"><span className="mb-2 block text-xs font-extrabold">{copy.enquiry.group}</span><input name="group" className="w-full rounded-xl border border-[#cfd9cc] bg-[#f8f4e9] px-4 py-3 text-sm outline-none transition placeholder:text-[#e75b3b] focus:border-[#e75b3b] focus:ring-2 focus:ring-[#e75b3b]/15" placeholder="e.g. 4 adults" /></label></div><label className="block"><span className="mb-2 block text-xs font-extrabold">{copy.enquiry.interest}</span><select name="interest" value={trip} onChange={(event) => setTrip(event.target.value)} className="w-full appearance-none rounded-xl border border-[#cfd9cc] bg-[#f8f4e9] px-4 py-3 text-sm outline-none transition focus:border-[#e75b3b] focus:ring-2 focus:ring-[#e75b3b]/15"><option value="">A little bit of everything</option>{services.map((service) => <option key={service.title}>{service.title}</option>)}{routes.map((route) => <option key={route.name}>{route.name}</option>)}</select></label><label className="block"><span className="mb-2 block text-xs font-extrabold">{copy.enquiry.note}</span><textarea name="note" rows={3} className="w-full resize-none rounded-xl border border-[#cfd9cc] bg-[#f8f4e9] px-4 py-3 text-sm outline-none transition placeholder:text-[#8aa096] focus:border-[#e75b3b] focus:ring-2 focus:ring-[#e75b3b]/15" placeholder="Slow mornings, a short trek, temple visits, rafting..." /></label><button type="submit" className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#15322f] px-5 py-4 text-sm font-extrabold text-[#fffaf0] transition hover:bg-[#28534b]">{copy.enquiry.submit} <ArrowRight size={16} /></button><p className="text-center font-mono-custom text-[9px] uppercase tracking-[0.13em] text-[#789087]">No booking form. Just a direct conversation.</p></form>}</div></div></section>
       </main>
 
+      <TravelAIAssistant />
       <footer className="bg-[#15322f] py-10 text-[#fffaf0]"><div className="mx-auto max-w-[1240px] px-5 lg:px-8"><div className="flex flex-col justify-between gap-7 border-b border-white/15 pb-8 md:flex-row md:items-end"><div className="flex items-center gap-3"><LogoMark /><div><p className="text-sm font-extrabold tracking-[0.04em]">GARHWAL TOUR N ADVENTURE</p><p className="mt-1 text-xs text-[#b7ccc0]">Uttarakhand, India · Owner: Mangal Singh Jethuri</p><p className="mt-1 font-mono-custom text-[9px] uppercase tracking-[0.12em] text-[#8eb0a0]">MSME / UDYAM-UK-11-0006387</p></div></div><div className="flex flex-wrap gap-x-5 gap-y-3 text-xs font-bold text-[#dce7dc]">{items.map((item) => <a key={item.href} href={item.href} target={item.external ? '_blank' : undefined} rel={item.external ? 'noopener noreferrer' : undefined} className={`transition hover:text-[#f8c75a] ${item.external ? 'font-extrabold text-[#f8c75a]' : ''}`}>{item.label}</a>)}<a href="tel:+918077016559" className="transition hover:text-[#f8c75a]">+91 80770 16559</a></div></div><div className="flex flex-col justify-between gap-4 pt-6 text-[10px] text-[#8eb0a0] sm:flex-row"><p>Built for the curious, by a local.</p><div className="flex items-center gap-5"><span>© {new Date().getFullYear()} Garhwal Tour N Adventure</span><a href="https://www.instagram.com/" target="_blank" rel="noreferrer" aria-label="Garhwal Tour N Adventure on Instagram" className="transition hover:text-[#f8c75a]"><Instagram size={15} /></a></div></div></div></footer>
       <button type="button" onClick={() => openWhatsApp('Namaste Mangal, I would like to plan a trip through Uttarakhand.')} aria-label="Open WhatsApp enquiry" className="whatsapp-pulse fixed bottom-5 right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-[#2d9a62] text-white shadow-lg transition hover:scale-105 hover:bg-[#258653] md:bottom-7 md:right-7"><MessageCircle size={25} /></button>
     </div>
   );
+}
+
+function TravelAIAssistant() {
+  const [open,setOpen]=useState(false);
+  const [question,setQuestion]=useState('');
+  const [messages,setMessages]=useState<{role:'user'|'assistant';text:string}[]>([
+    {role:'assistant',text:'Namaste! I am your Garhwal travel assistant. Ask me about routes, distances, travel time, sightseeing or itinerary ideas.'}
+  ]);
+  const [loading,setLoading]=useState(false);
+
+  const ask=async(e:FormEvent)=>{
+    e.preventDefault();
+    const q=question.trim();
+    if(!q||loading)return;
+    setQuestion('');
+    setMessages(m=>[...m,{role:'user',text:q}]);
+    setLoading(true);
+    try{
+      const r=await fetch('https://garhwal-booking.pages.dev/api/ai',{
+        method:'POST',
+        headers:{'content-type':'application/json'},
+        body:JSON.stringify({message:q})
+      });
+      const data=await r.json();
+      setMessages(m=>[...m,{role:'assistant',text:data.answer||data.error||'Sorry, I could not answer that right now.'}]);
+    }catch{
+      setMessages(m=>[...m,{role:'assistant',text:'The travel assistant is temporarily unavailable. Please use WhatsApp to speak with us directly.'}]);
+    }finally{setLoading(false);}
+  };
+
+  return <div className="fixed bottom-5 right-5 z-[60]">
+    {open && <div className="mb-3 flex h-[min(70vh,520px)] w-[min(92vw,390px)] flex-col overflow-hidden rounded-2xl border border-[#d7ded3] bg-[#fffaf0] shadow-2xl">
+      <div className="flex items-center justify-between bg-[#15322f] px-4 py-3 text-[#fffaf0]">
+        <div><div className="text-sm font-extrabold">AI Travel Assistant</div><div className="text-[10px] text-[#b7ccc0]">Garhwal Tour N Adventure</div></div>
+        <button aria-label="Close travel assistant" onClick={()=>setOpen(false)} className="rounded-full p-2 hover:bg-white/10"><X size={18}/></button>
+      </div>
+      <div className="flex-1 space-y-3 overflow-y-auto p-3">
+        {messages.map((m,i)=><div key={i} className={m.role==='user'?'ml-8 rounded-2xl rounded-br-sm bg-[#f36b08] px-3 py-2 text-sm text-white':'mr-8 rounded-2xl rounded-bl-sm bg-[#e8eee8] px-3 py-2 text-sm text-[#15322f]'}>{m.text}</div>)}
+        {loading && <div className="mr-8 rounded-2xl bg-[#e8eee8] px-3 py-2 text-sm text-[#15322f]">Checking travel information…</div>}
+      </div>
+      <form onSubmit={ask} className="flex gap-2 border-t border-[#d7ded3] p-3">
+        <input value={question} onChange={e=>setQuestion(e.target.value)} placeholder="Ask: Delhi to Rishikesh?" className="min-w-0 flex-1 rounded-xl border border-[#cbd5cc] bg-white px-3 py-2 text-sm outline-none focus:border-[#15322f]" />
+        <button disabled={loading||!question.trim()} className="rounded-xl bg-[#15322f] px-3 text-white disabled:opacity-50"><Send size={17}/></button>
+      </form>
+    </div>}
+    <button onClick={()=>setOpen(v=>!v)} aria-label="Open AI travel assistant" className="flex items-center gap-2 rounded-full bg-[#f36b08] px-4 py-3 font-extrabold text-white shadow-xl transition hover:scale-[1.02]">
+      <Sparkles size={19}/><span className="hidden sm:inline">AI Travel Guide</span><span className="sm:hidden">AI</span>
+    </button>
+  </div>;
 }
 
 function Router() {
