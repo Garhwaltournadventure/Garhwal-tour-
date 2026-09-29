@@ -7,6 +7,49 @@ function auth(request,env){
 function corsJson(data,status=200){
  return new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json','cache-control':'no-store'}});
 }
+function b64url(bytes){return btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/\\+/g,'-').replace(/\\//g,'_').replace(/=+$/,'')}
+function pemToBytes(pem){
+ const b64=pem.replace(/-----BEGIN PRIVATE KEY-----|-----END PRIVATE KEY-----|\\s/g,'');
+ const raw=atob(b64); const out=new Uint8Array(raw.length);
+ for(let i=0;i<raw.length;i++)out[i]=raw.charCodeAt(i);
+ return out;
+}
+async function firebaseAccessToken(env){
+ const raw=env.FIREBASE_SERVICE_ACCOUNT_JSON;
+ if(!raw)return null;
+ const sa=JSON.parse(raw);
+ const now=Math.floor(Date.now()/1000);
+ const header=b64url(new TextEncoder().encode(JSON.stringify({alg:'RS256',typ:'JWT'})));
+ const claim=b64url(new TextEncoder().encode(JSON.stringify({iss:sa.client_email,scope:'https://www.googleapis.com/auth/firebase.messaging',aud:'https://oauth2.googleapis.com/token',iat:now,exp:now+3600})));
+ const key=await crypto.subtle.importKey('pkcs8',pemToBytes(sa.private_key),{name:'RSASSA-PKCS1-v1_5',hash:'SHA-256'},false,['sign']);
+ const sig=await crypto.subtle.sign({name:'RSASSA-PKCS1-v1_5'},key,new TextEncoder().encode(header+'.'+claim));
+ const jwt=header+'.'+claim+'.'+b64url(sig);
+ const r=await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:'grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion='+encodeURIComponent(jwt)});
+ if(!r.ok)return null;
+ const data=await r.json();
+ return data.access_token||null;
+}
+async function sendNewBookingPush(env,b){
+ if(!env.FIREBASE_SERVICE_ACCOUNT_JSON || !env.DB)return {sent:0,reason:'firebase_push_not_configured'};
+ const accessToken=await firebaseAccessToken(env);
+ if(!accessToken)return {sent:0,reason:'firebase_auth_failed'};
+ const sa=JSON.parse(env.FIREBASE_SERVICE_ACCOUNT_JSON);
+ const rows=await env.DB.prepare("SELECT token FROM device_tokens WHERE active=1").all();
+ const tokens=(rows.results||[]).map(x=>x.token).filter(Boolean);
+ let sent=0;
+ for(const token of tokens){
+  const body={message:{token,notification:{title:'New Booking '+b.booking_ref,body:b.name+' • '+b.service+' • '+(b.date||'Date not set')},data:{booking_ref:String(b.booking_ref||''),guest:String(b.name||''),service:String(b.service||''),date:String(b.date||''),pax:String(b.pax||1),title:'New Booking '+b.booking_ref,body:b.name+' • '+b.service+' • '+(b.date||'Date not set')},android:{priority:'high',notification:{channel_id:'garhwal_bookings',click_action:'com.garhwaltournadventure.booking.OPEN_STAFF'}}}};
+  const r=await fetch('https://fcm.googleapis.com/v1/projects/'+encodeURIComponent(sa.project_id)+'/messages:send',{method:'POST',headers:{Authorization:'Bearer '+accessToken,'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(r.ok)sent++;
+  else {
+   let err='';try{err=await r.text()}catch(e){}
+   if(err.includes('UNREGISTERED')||err.includes('registration-token-not-registered')){
+    await env.DB.prepare('UPDATE device_tokens SET active=0,updated_at=? WHERE token=?').bind(new Date().toISOString(),token).run();
+   }
+  }
+ }
+ return {sent,total:tokens.length};
+}
 async function sendConfirmationEmail(env,b){
  const apiKey=env.RESEND_API_KEY;
  if(!apiKey || !b.email)return {sent:false,reason:'email_not_configured_or_missing_guest_email'};
@@ -71,6 +114,7 @@ export async function onRequest(context){
   if(!b.name||!b.phone||!b.service)return json({error:'Name, phone and service are required.'},400);
   const rec={id:id(),booking_ref:ref(),created_at:new Date().toISOString(),company:b.company||'Garhwal Tour N Adventure',cphone:b.cphone||'',cemail:b.cemail||'',msme:b.msme||'',name:b.name,phone:b.phone,email:b.email||'',idtype:b.idtype||'',idno:b.idno||'',service:b.service,date:b.date||'',pax:Number(b.pax||1),details:b.details||'',payment_note:b.paymentNote||'',status:'New',vehicle:'',driver:'',driver_phone:'',price:0,advance:0,received:0,paid:0,mode:'',paidto:'',gst:0,admin_note:''};
   await env.DB.prepare(`INSERT INTO bookings (id,booking_ref,created_at,company,cphone,cemail,msme,name,phone,email,idtype,idno,service,date,pax,details,payment_note,status,vehicle,driver,driver_phone,price,advance,received,paid,mode,paidto,gst,admin_note) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(...Object.values(rec)).run();
+  context.waitUntil(sendNewBookingPush(env,rec).catch(()=>null));
   return json({booking:rec},201);
  }
  if(!auth(request,env))return json({error:'Unauthorized'},401);
