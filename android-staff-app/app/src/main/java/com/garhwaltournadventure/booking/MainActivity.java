@@ -34,7 +34,11 @@ public class MainActivity extends Activity {
         }
         FirebaseMessaging.getInstance().getToken().addOnCompleteListener(task -> {
             if (task.isSuccessful() && task.getResult() != null) {
-                getSharedPreferences("fcm", MODE_PRIVATE).edit().putString("token", task.getResult()).apply();
+                String pushToken = task.getResult();
+                getSharedPreferences("fcm", MODE_PRIVATE).edit().putString("token", pushToken).apply();
+                if (webView != null) {
+                    webView.post(() -> webView.evaluateJavascript("if(typeof registerNativePush==='function'){registerNativePush();}", null));
+                }
             }
         });
 
