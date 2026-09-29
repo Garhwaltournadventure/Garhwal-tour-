@@ -11,7 +11,60 @@ function cors(body,status=200){
   }});
 }
 
-export async function onRequest(context){
+export 
+async function geocode(place){
+  try{
+    const url='https://geocoding-api.open-meteo.com/v1/search?name='+encodeURIComponent(place)+ '&count=1&language=en&format=json&countryCode=IN';
+    const r=await fetch(url);
+    if(!r.ok)return null;
+    const d=await r.json();
+    const x=d?.results?.[0];
+    return x?{name:x.name,latitude:x.latitude,longitude:x.longitude,admin1:x.admin1,country:x.country}:null;
+  }catch{return null}
+}
+
+async function getRouteContext(origin,destination){
+  const [a,b]=await Promise.all([geocode(origin),geocode(destination)]);
+  if(!a||!b)return null;
+  try{
+    const url='https://router.project-osrm.org/route/v1/driving/'+a.longitude+','+a.latitude+';'+b.longitude+','+b.latitude+'?overview=false&alternatives=true';
+    const r=await fetch(url);
+    if(!r.ok)return {origin:a,destination:b};
+    const d=await r.json();
+    const routes=(d.routes||[]).slice(0,2).map(x=>({
+      distance_km:Math.round((x.distance/1000)*10)/10,
+      duration_min:Math.round(x.duration/60)
+    }));
+    return {origin:a,destination:b,routes};
+  }catch{return {origin:a,destination:b}}
+}
+
+async function getWeatherContext(place){
+  const p=await geocode(place);
+  if(!p)return null;
+  try{
+    const url='https://api.open-meteo.com/v1/forecast?latitude='+p.latitude+'&longitude='+p.longitude+'&current=temperature_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code&forecast_days=3&timezone=auto';
+    const r=await fetch(url);
+    if(!r.ok)return {place:p};
+    const d=await r.json();
+    return {place:p,current:d.current,daily:d.daily};
+  }catch{return {place:p}}
+}
+
+function extractRoute(message){
+  const m=message.replace(/[?!.]+$/,'').match(/(?:from\s+)?(.+?)\s+to\s+(.+?)(?:\s+(?:distance|distances|travel time|how long|route|road route|by road|weather).*)?$/i);
+  if(!m)return null;
+  const origin=m[1].trim(),destination=m[2].trim();
+  if(origin.length<2||destination.length<2||origin.length>80||destination.length>80)return null;
+  return {origin,destination};
+}
+
+function extractWeatherPlace(message){
+  const m=message.match(/(?:weather|temperature|forecast|rain|rainfall|snow)\s+(?:in|at|for|of)\s+(.+?)(?:\?|$)/i);
+  return m?m[1].trim().replace(/[?.]+$/,''):null;
+}
+
+async function onRequest(context){
   const {request,env}=context;
 
   if(request.method==='OPTIONS'){
@@ -104,6 +157,14 @@ export async function onRequest(context){
 
   const liveContext=await getTravelContext(message);
 
+
+  const route=extractRoute(message);
+  const weatherPlace=extractWeatherPlace(message);
+  const [liveRoute,liveWeather]=await Promise.all([
+    route?getRouteContext(route.origin,route.destination):Promise.resolve(null),
+    weatherPlace?getWeatherContext(weatherPlace):Promise.resolve(null)
+  ]);
+
   const systemPrompt=[
     'You are the official AI Travel Assistant for Garhwal Tour N Adventure, Uttarakhand, India.',
     'Help visitors with Uttarakhand and India travel planning: distances, approximate travel times, routes, sightseeing, itineraries, transport options, seasons and practical travel information.',
@@ -115,7 +176,7 @@ export async function onRequest(context){
     'Travel time: [approximate time]',
     'Best route: [route name]',
     'Notes: [one or two useful points]',
-    'Use short lines. Do NOT use Markdown bullets, asterisks, headings, bold markers, ##, ###, backticks or long paragraphs. Do not repeat the same information. Put each label on its own line. Do not include the company name, phone number, booking URL or other business details in the answer; the website adds those separately below the answer.',
+    'Use short lines. Do NOT use Markdown bullets, asterisks, headings, bold markers, ##, ###, backticks or long paragraphs. Do not repeat the same information. Put each label on its own line. When live route or weather data is provided below, use it as the primary source for those figures and mention that it is live data. Do not invent traffic conditions. Do not include the company name, phone number, booking URL or other business details in the answer; the website adds those separately below the answer.',
     'If the user asks only for distance, answer directly first and then give travel time if useful.',
     'For bookings or quotations, collect useful trip details and direct the visitor to the booking page or WhatsApp rather than pretending a booking is confirmed.',
     
