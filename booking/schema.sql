@@ -31,3 +31,12 @@ CREATE TABLE IF NOT EXISTS bookings (
 );
 CREATE INDEX IF NOT EXISTS idx_bookings_created_at ON bookings(created_at);
 CREATE INDEX IF NOT EXISTS idx_bookings_phone ON bookings(phone);
+CREATE TABLE IF NOT EXISTS device_tokens (
+ token TEXT PRIMARY KEY,
+ user_id TEXT,
+ role TEXT,
+ active INTEGER NOT NULL DEFAULT 1,
+ created_at TEXT NOT NULL,
+ updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_device_tokens_active ON device_tokens(active);
