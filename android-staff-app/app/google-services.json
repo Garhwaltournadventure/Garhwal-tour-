@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "611244681400",
+    "project_id": "garhwal-tour-n-adventure",
+    "storage_bucket": "garhwal-tour-n-adventure.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:611244681400:android:c614d10039d643d86c2c4d",
+        "android_client_info": {
+          "package_name": "com.garhwaltournadventure.booking"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBTUVwVLE2vDIdg37Km0hiLO-NDR2ESVII"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
