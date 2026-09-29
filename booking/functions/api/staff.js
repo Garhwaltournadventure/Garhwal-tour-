@@ -84,6 +84,9 @@ export async function onRequest({request,env}){
   if(s.role==='admin'){
    const r=await db.prepare('SELECT * FROM bookings ORDER BY created_at DESC').all();return json({bookings:r.results||[]});
   }
+  let perms={};try{perms=typeof s.permissions==='string'?JSON.parse(s.permissions||'{}'):(s.permissions||{})}catch(e){}
+  if(perms.view_all){const r=await db.prepare('SELECT * FROM bookings ORDER BY created_at DESC').all();return json({bookings:r.results||[]})}
+  if(perms.view_assigned===false)return json({bookings:[]});
   const r=await db.prepare('SELECT * FROM bookings WHERE driver=? ORDER BY date,created_at DESC').bind(s.display_name).all();return json({bookings:r.results||[]});
  }
  return json({error:'Not found'},404);
