@@ -13,7 +13,7 @@ import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
 
 public class BookingMessagingService extends FirebaseMessagingService {
-    private static final String CHANNEL_ID = "garhwal_bookings_v2";
+    private static final String CHANNEL_ID = "garhwal_bookings_v3";
 
     @Override
     public void onNewToken(String token) {
