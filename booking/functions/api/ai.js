@@ -138,7 +138,7 @@ export async function onRequest(context){
 
     const answer=response?.response||response?.choices?.[0]?.message?.content||response?.choices?.[0]?.text||'';
     if(!answer) return cors({error:'AI returned an empty answer. Please try again.'},502);
-    return cors({answer});
+    return cors({answer,maps_url:liveContext.maps_url||null});
   }catch(error){
     return cors({error:'AI request failed.',detail:String(error?.message||error)},502);
   }
