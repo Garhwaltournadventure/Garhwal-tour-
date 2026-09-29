@@ -53,6 +53,10 @@ export async function onRequest(context){
  }
  if(!auth(request,env))return json({error:'Unauthorized'},401);
  if(method==='GET'){
+  if(url.searchParams.get('workers')==='1'){
+   const result=await env.DB.prepare("SELECT display_name FROM staff_users WHERE role='worker' AND active=1 ORDER BY display_name").all();
+   return json({workers:result.results||[]});
+  }
   const result=await env.DB.prepare('SELECT * FROM bookings ORDER BY created_at DESC').all();
   return json({bookings:result.results||[]});
  }
