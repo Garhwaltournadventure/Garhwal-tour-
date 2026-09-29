@@ -489,7 +489,7 @@ function Home() {
 function TravelAIAssistant() {
   const [open,setOpen]=useState(false);
   const [question,setQuestion]=useState('');
-  const [messages,setMessages]=useState<{role:'user'|'assistant';text:string}[]>([
+  const [messages,setMessages]=useState<{role:'user'|'assistant';text:string;mapsUrl?:string}[]>([
     {role:'assistant',text:'Namaste! I am your Garhwal travel assistant. Ask me about routes, distances, travel time, sightseeing or itinerary ideas.'}
   ]);
   const [loading,setLoading]=useState(false);
@@ -508,7 +508,7 @@ function TravelAIAssistant() {
         body:JSON.stringify({message:q})
       });
       const data=await r.json();
-      setMessages(m=>[...m,{role:'assistant',text:data.answer||(data.detail?('AI error: '+data.detail):null)||data.error||'Sorry, I could not answer that right now.'}]);
+      setMessages(m=>[...m,{role:'assistant',text:data.answer||(data.detail?('AI error: '+data.detail):null)||data.error||'Sorry, I could not answer that right now.',mapsUrl:data.maps_url||undefined}]);
     }catch{
       setMessages(m=>[...m,{role:'assistant',text:'The travel assistant is temporarily unavailable. Please use WhatsApp to speak with us directly.'}]);
     }finally{setLoading(false);}
@@ -521,7 +521,7 @@ function TravelAIAssistant() {
         <button aria-label="Close travel assistant" onClick={()=>setOpen(false)} className="rounded-full p-2 hover:bg-white/10"><X size={18}/></button>
       </div>
       <div className="flex-1 space-y-3 overflow-y-auto p-3">
-        {messages.map((m,i)=><div key={i} className={m.role==='user'?'ml-8 whitespace-pre-line rounded-2xl rounded-br-sm bg-[#f36b08] px-3 py-2 text-sm leading-6 text-white':'mr-8 whitespace-pre-line rounded-2xl rounded-bl-sm bg-[#e8eee8] px-3 py-2 text-sm leading-6 text-[#15322f]'}>{m.text}{m.role==='assistant'&&i>0&&<div className="mt-3 border-t border-[#cbd8cc] pt-2 text-[10px] leading-4 text-[#60786e]"><div className="font-extrabold text-[#15322f]">Garhwal Tour N Adventure</div><div>Uttarakhand, India</div><div>WhatsApp: +91 80770 16559</div><div>MSME: UDYAM-UK-11-0006387</div></div>}</div>)}
+        {messages.map((m,i)=><div key={i} className={m.role==='user'?'ml-8 whitespace-pre-line rounded-2xl rounded-br-sm bg-[#f36b08] px-3 py-2 text-sm leading-6 text-white':'mr-8 whitespace-pre-line rounded-2xl rounded-bl-sm bg-[#e8eee8] px-3 py-2 text-sm leading-6 text-[#15322f]'}>{m.text}{m.mapsUrl&&<a href={m.mapsUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center rounded-lg bg-[#15322f] px-3 py-2 text-[11px] font-extrabold text-white">Open route in Google Maps</a>}{m.role==='assistant'&&i>0&&<div className="mt-3 border-t border-[#cbd8cc] pt-2 text-[10px] leading-4 text-[#60786e]"><div className="font-extrabold text-[#15322f]">Garhwal Tour N Adventure</div><div>Uttarakhand, India</div><div>WhatsApp: +91 80770 16559</div><div>MSME: UDYAM-UK-11-0006387</div></div>}</div>)}
         {loading && <div className="mr-8 rounded-2xl bg-[#e8eee8] px-3 py-2 text-sm text-[#15322f]">Checking travel information…</div>}
       </div>
       <form onSubmit={ask} className="flex gap-2 border-t border-[#d7ded3] p-3">
