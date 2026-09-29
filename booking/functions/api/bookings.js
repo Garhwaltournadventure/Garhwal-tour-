@@ -48,7 +48,7 @@ async function sendNewBookingPush(env,b){
    token,
    notification:{title:'New Booking '+b.booking_ref,body:pushBody},
    data:{booking_ref:String(b.booking_ref||''),guest:String(b.name||''),service:String(b.service||''),date:String(b.date||''),pax:String(b.pax||1),details,additional_note:note},
-   android:{priority:'high',notification:{channel_id:'garhwal_bookings_v3',click_action:'com.garhwaltournadventure.booking.OPEN_STAFF'}}
+   android:{priority:'high',notification:{channel_id:'garhwal_bookings_v3',sound:'default',default_sound:true,click_action:'com.garhwaltournadventure.booking.OPEN_STAFF'}}
   }};
   const r=await fetch('https://fcm.googleapis.com/v1/projects/'+encodeURIComponent(sa.project_id)+'/messages:send',{method:'POST',headers:{Authorization:'Bearer '+accessToken,'Content-Type':'application/json'},body:JSON.stringify(body)});
   if(r.ok)sent++;
