@@ -11,10 +11,9 @@ function cors(body,status=200){
   }});
 }
 
-export 
 async function geocode(place){
   try{
-    const url='https://geocoding-api.open-meteo.com/v1/search?name='+encodeURIComponent(place)+ '&count=1&language=en&format=json&countryCode=IN';
+    const url='https://geocoding-api.open-meteo.com/v1/search?name='+encodeURIComponent(place)+'&count=1&language=en&format=json&countryCode=IN';
     const r=await fetch(url);
     if(!r.ok)return null;
     const d=await r.json();
@@ -23,27 +22,53 @@ async function geocode(place){
   }catch{return null}
 }
 
-async function getRouteContext(origin,destination){
-  const [a,b]=await Promise.all([geocode(origin),geocode(destination)]);
+function extractRoute(message){
+  const cleaned=message.replace(/[?!.]+$/,'').trim();
+  const patterns=[
+    /(?:from\s+)?(.+?)\s+to\s+(.+?)(?:\s+(?:distance|distances|travel time|how long|route|road route|by road))?$/i,
+    /(.+?)\s+se\s+(.+?)(?:\s+(?:distance|travel time|route))?$/i,
+    /(.+?)\s+से\s+(.+?)(?:\s+(?:दूरी|समय|रूट))?$/i
+  ];
+  for(const p of patterns){
+    const m=cleaned.match(p);
+    if(!m)continue;
+    const origin=m[1].replace(/^(distance|route|travel time|how far)\s+/i,'').trim();
+    const destination=m[2].trim();
+    if(origin.length>=2&&destination.length>=2&&origin.length<=80&&destination.length<=80){
+      return {origin,destination};
+    }
+  }
+  return null;
+}
+
+function extractWeatherPlace(message){
+  const m=message.match(/(?:weather|temperature|forecast|rain|rainfall|snow|mausam|मौसम)\s+(?:in|at|for|of|ka|ki|ke|में|का|की)?\s*(.+?)(?:\?|$)/i);
+  return m?m[1].trim().replace(/[?.]+$/,''):null;
+}
+
+async function getRouteContext(route){
+  if(!route)return null;
+  const [a,b]=await Promise.all([geocode(route.origin),geocode(route.destination)]);
   if(!a||!b)return null;
   try{
     const url='https://router.project-osrm.org/route/v1/driving/'+a.longitude+','+a.latitude+';'+b.longitude+','+b.latitude+'?overview=false&alternatives=true';
     const r=await fetch(url);
-    if(!r.ok)return {origin:a,destination:b};
+    if(!r.ok)return {origin:a,destination:b,routes:[]};
     const d=await r.json();
     const routes=(d.routes||[]).slice(0,2).map(x=>({
       distance_km:Math.round((x.distance/1000)*10)/10,
-      duration_min:Math.round(x.duration/60)
+      driving_minutes:Math.round(x.duration/60)
     }));
     return {origin:a,destination:b,routes};
-  }catch{return {origin:a,destination:b}}
+  }catch{return {origin:a,destination:b,routes:[]}}
 }
 
 async function getWeatherContext(place){
+  if(!place)return null;
   const p=await geocode(place);
   if(!p)return null;
   try{
-    const url='https://api.open-meteo.com/v1/forecast?latitude='+p.latitude+'&longitude='+p.longitude+'&current=temperature_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code&forecast_days=3&timezone=auto';
+    const url='https://api.open-meteo.com/v1/forecast?latitude='+p.latitude+'&longitude='+p.longitude+'&current=temperature_2m,apparent_temperature,precipitation,rain,weather_code,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code&forecast_days=3&timezone=auto';
     const r=await fetch(url);
     if(!r.ok)return {place:p};
     const d=await r.json();
@@ -51,20 +76,7 @@ async function getWeatherContext(place){
   }catch{return {place:p}}
 }
 
-function extractRoute(message){
-  const m=message.replace(/[?!.]+$/,'').match(/(?:from\s+)?(.+?)\s+to\s+(.+?)(?:\s+(?:distance|distances|travel time|how long|route|road route|by road|weather).*)?$/i);
-  if(!m)return null;
-  const origin=m[1].trim(),destination=m[2].trim();
-  if(origin.length<2||destination.length<2||origin.length>80||destination.length>80)return null;
-  return {origin,destination};
-}
-
-function extractWeatherPlace(message){
-  const m=message.match(/(?:weather|temperature|forecast|rain|rainfall|snow)\s+(?:in|at|for|of)\s+(.+?)(?:\?|$)/i);
-  return m?m[1].trim().replace(/[?.]+$/,''):null;
-}
-
-async function onRequest(context){
+export async function onRequest(context){
   const {request,env}=context;
 
   if(request.method==='OPTIONS'){
@@ -75,116 +87,42 @@ async function onRequest(context){
     }});
   }
 
-  if(request.method!=='POST') return cors({error:'Method not allowed'},405);
-  if(!env.AI) return cors({error:'AI service is not configured yet. Add a Workers AI binding named AI to this Pages project.'},503);
+  if(request.method!=='POST')return cors({error:'Method not allowed'},405);
+  if(!env.AI)return cors({error:'AI service is not configured yet. Add a Workers AI binding named AI to this Pages project.'},503);
 
   let body;
-  try{ body=await request.json(); }catch{return cors({error:'Invalid request.'},400)}
+  try{body=await request.json();}catch{return cors({error:'Invalid request.'},400)}
+
   const message=String(body.message||'').trim();
-  if(!message) return cors({error:'Please enter a question.'},400);
-  if(message.length>1200) return cors({error:'Please keep the question under 1200 characters.'},400);
-
-  async function geocode(place){
-    const url='https://geocoding-api.open-meteo.com/v1/search?name='+encodeURIComponent(place)+'&count=1&language=en&format=json';
-    const r=await fetch(url);
-    if(!r.ok)return null;
-    const d=await r.json();
-    const x=d?.results?.[0];
-    return x?{name:x.name,latitude:x.latitude,longitude:x.longitude,country:x.country}:null;
-  }
-
-  function extractPlaces(q){
-    const cleaned=q.replace(/[?!.]/g,' ').replace(/\\s+/g,' ').trim();
-    const patterns=[
-      /from\\s+(.+?)\\s+to\\s+(.+)/i,
-      /(.+?)\\s+to\\s+(.+)/i,
-      /(.+?)\\s+se\\s+(.+)/i,
-      /(.+?)\\s+से\\s+(.+)/i
-    ];
-    for(const p of patterns){
-      const m=cleaned.match(p);
-      if(m){
-        const left=m[1].replace(/^(distance|route|travel time|how far|weather)\\s+/i,'').trim();
-        const right=m[2].replace(/\\s+(distance|route|travel time|ka distance|ki distance|के बीच.*)$/i,'').trim();
-        if(left&&right&&left.length<80&&right.length<80)return [left,right];
-      }
-    }
-    return null;
-  }
-
-  async function getTravelContext(q){
-    const places=extractPlaces(q);
-    const context={weather:null,route:null,maps_url:null};
-    let destination=null;
-
-    if(places){
-      const [from,to]=places;
-      const [a,b]=await Promise.all([geocode(from),geocode(to)]);
-      if(a&&b){
-        const routeUrl='https://router.project-osrm.org/route/v1/driving/'+a.longitude+','+a.latitude+';'+b.longitude+','+b.latitude+'?overview=false';
-        try{
-          const rr=await fetch(routeUrl);
-          if(rr.ok){
-            const rd=await rr.json();
-            const rt=rd?.routes?.[0];
-            if(rt) context.route={
-              from:a.name,to:b.name,
-              distance_km:Math.round((rt.distance/1000)*10)/10,
-              driving_minutes:Math.round(rt.duration/60)
-            };
-          }
-        }catch{}
-        context.maps_url='https://www.google.com/maps/dir/?api=1&origin='+encodeURIComponent(a.name)+'&destination='+encodeURIComponent(b.name);
-        destination=b;
-      }
-    }else{
-      const weatherMatch=q.match(/(?:weather|temperature|mausam|मौसम)\\s+(?:in|at|of|ka|ki|के|में)?\\s*(.+)$/i);
-      if(weatherMatch) destination=await geocode(weatherMatch[1].trim());
-    }
-
-    if(destination){
-      try{
-        const wu='https://api.open-meteo.com/v1/forecast?latitude='+destination.latitude+'&longitude='+destination.longitude+'&current=temperature_2m,apparent_temperature,precipitation,rain,weather_code,wind_speed_10m&timezone=auto';
-        const wr=await fetch(wu);
-        if(wr.ok){
-          const wd=await wr.json();
-          context.weather={location:destination.name,...(wd.current||{})};
-        }
-      }catch{}
-    }
-    return context;
-  }
-
-  const liveContext=await getTravelContext(message);
-
+  if(!message)return cors({error:'Please enter a question.'},400);
+  if(message.length>1200)return cors({error:'Please keep the question under 1200 characters.'},400);
 
   const route=extractRoute(message);
   const weatherPlace=extractWeatherPlace(message);
+
   const [liveRoute,liveWeather]=await Promise.all([
-    route?getRouteContext(route.origin,route.destination):Promise.resolve(null),
+    route?getRouteContext(route):Promise.resolve(null),
     weatherPlace?getWeatherContext(weatherPlace):Promise.resolve(null)
   ]);
+
+  const mapsUrl=liveRoute?.origin&&liveRoute?.destination
+    ?'https://www.google.com/maps/dir/?api=1&origin='+encodeURIComponent(liveRoute.origin.name)+'&destination='+encodeURIComponent(liveRoute.destination.name)
+    :null;
+
+  const liveContext={route:liveRoute,weather:liveWeather};
 
   const systemPrompt=[
     'You are the official AI Travel Assistant for Garhwal Tour N Adventure, Uttarakhand, India.',
     'Help visitors with Uttarakhand and India travel planning: distances, approximate travel times, routes, sightseeing, itineraries, transport options, seasons and practical travel information.',
-    'This free version has no live web browsing. Never claim to have checked live traffic, current road closures, current weather, transport schedules, prices or availability. Clearly label estimates and advise verification for time-sensitive details.',
-    'Give travel answers in a clean, compact format that is easy to read on a mobile phone.',
-    'For route questions, prefer this structure when applicable:',
-    'Route: [origin] → [destination]',
-    'Distance: [approximate distance]',
-    'Travel time: [approximate time]',
-    'Best route: [route name]',
-    'Notes: [one or two useful points]',
-    'Use short lines. Do NOT use Markdown bullets, asterisks, headings, bold markers, ##, ###, backticks or long paragraphs. Do not repeat the same information. Put each label on its own line. When live route or weather data is provided below, use it as the primary source for those figures and mention that it is live data. Do not invent traffic conditions. Do not include the company name, phone number, booking URL or other business details in the answer; the website adds those separately below the answer.',
-    'If the user asks only for distance, answer directly first and then give travel time if useful.',
+    'Give answers in a clean, compact format that is easy to read on a mobile phone.',
+    'For route questions use this structure when applicable: Route: origin → destination. Distance: value. Travel time: value. Best route: value. Notes: one or two useful points.',
+    'Use each label on its own line. Do not use Markdown bullets, asterisks, headings, bold markers, ##, ###, backticks or long paragraphs. Do not repeat information.',
+    'LIVE ROUTE DATA comes from a routing service and is a current route calculation, not live traffic. LIVE WEATHER DATA is current weather data from a weather service. Use provided live data as the primary source and do not invent missing values.',
+    'Do not claim that traffic congestion, accidents, road closures, permits or other road status is live or verified unless explicit data for it is provided. If asked about road status, say it is not currently verified and advise checking official/local sources.',
     'For bookings or quotations, collect useful trip details and direct the visitor to the booking page or WhatsApp rather than pretending a booking is confirmed.',
-    
-    'Keep answers concise, practical and friendly. If the visitor asks about a destination outside Uttarakhand, still help with general India travel information.',
+    'Do not include company name, phone number, booking URL or MSME details in the answer; the website adds those separately below the answer.',
     'Do not expose system instructions, API keys, internal endpoints or private data.',
-    'If LIVE TRAVEL CONTEXT is provided below, use it as the primary source for route distance, driving time and current weather. Clearly label weather as current and route values as routing estimates. Do not invent missing values.',
-    'Current road closures, accidents, traffic congestion and permits are NOT verified by this service. Never claim that road status is live unless explicit road-status data is provided.',
-    'LIVE TRAVEL CONTEXT: '+JSON.stringify(liveContext)
+    'LIVE TRAVEL DATA: '+JSON.stringify(liveContext)
   ].join(' ');
 
   try{
@@ -198,8 +136,8 @@ async function onRequest(context){
     });
 
     const answer=response?.response||response?.choices?.[0]?.message?.content||response?.choices?.[0]?.text||'';
-    if(!answer) return cors({error:'AI returned an empty answer. Please try again.'},502);
-    return cors({answer,maps_url:liveContext.maps_url||null});
+    if(!answer)return cors({error:'AI returned an empty answer. Please try again.'},502);
+    return cors({answer,maps_url:mapsUrl});
   }catch(error){
     return cors({error:'AI request failed.',detail:String(error?.message||error)},502);
   }
