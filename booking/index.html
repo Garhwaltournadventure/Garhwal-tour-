@@ -12,7 +12,7 @@
 <body>
 <header><div class="head"><div class="brand">GARHWAL TOUR N ADVENTURE<small>Booking & Billing</small></div><div class="muted" style="color:#b7ccc0;font-size:12px">Uttarakhand · MSME UDYAM-UK-11-0006387</div></div></header>
 <div class="wrap">
-<div class="tabs no-print"><button class="tab active" data-tab="booking">Booking Form</button><button class="tab" data-tab="admin">Admin</button></div>
+<div class="tabs no-print"><button class="tab active" data-tab="booking">Booking Form</button></div>
 
 <section id="booking">
 <div class="notice"><b>Booking Form:</b> Please enter your details and trip/service requirements. Our team will confirm the booking with you.</div>
@@ -69,6 +69,7 @@ document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.datas
 if(tab==='admin'&&adminPassword) loadAdmin();
 }
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+if(new URLSearchParams(location.search).get('admin')==='1'){const b=document.createElement('button');b.className='tab';b.dataset.tab='admin';b.textContent='Admin';b.onclick=()=>showTab('admin');document.querySelector('.tabs').appendChild(b);}
 $('date').value=new Date().toISOString().slice(0,10);
 
 $('form').onsubmit=async e=>{
