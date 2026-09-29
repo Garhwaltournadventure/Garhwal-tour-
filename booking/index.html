@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Garhwal Tour N Adventure — Booking & Billing</title>
+<style>
+:root{--green:#15322f;--cream:#f8f4e9;--orange:#e75b3b;--gold:#f8c75a;--muted:#6b8179;--line:#d7dfd8;--white:#fffaf0}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;background:#eef2ed;color:var(--green)}button,input,select,textarea{font:inherit}header{background:var(--green);color:var(--white);padding:18px 24px;position:sticky;top:0;z-index:10;box-shadow:0 3px 15px #0002}.head{max-width:1200px;margin:auto;display:flex;justify-content:space-between;align-items:center;gap:16px}.brand{font-weight:900;letter-spacing:.04em}.brand small{display:block;color:var(--gold);font-style:italic;font-weight:700}.wrap{max-width:1200px;margin:24px auto;padding:0 16px}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}.tab,.btn{border:0;border-radius:10px;padding:11px 15px;font-weight:800;cursor:pointer}.tab{background:white;color:var(--green);border:1px solid var(--line)}.tab.active,.btn.primary{background:var(--orange);color:white}.btn.dark{background:var(--green);color:white}.btn.gold{background:var(--gold);color:var(--green)}.btn.ghost{background:white;border:1px solid var(--line);color:var(--green)}.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.card{background:white;border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 5px 20px #15322f0b}.card h2{margin:0 0 16px;font-size:20px}.fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}.field.full{grid-column:1/-1}label{font-size:12px;font-weight:800;display:block;margin-bottom:5px}input,select,textarea{width:100%;border:1px solid #cbd6cf;border-radius:9px;padding:10px 11px;background:#fbfcfa;color:var(--green)}textarea{min-height:75px;resize:vertical}.required{color:var(--orange)}.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:16px}.notice{padding:12px;border-radius:10px;background:#fff5d6;font-size:13px;margin-bottom:16px}.hidden{display:none}.tablewrap{overflow:auto;background:white;border-radius:14px;border:1px solid var(--line)}table{width:100%;border-collapse:collapse;min-width:850px}th,td{padding:11px;border-bottom:1px solid var(--line);text-align:left;font-size:13px}th{background:#f5f7f3;font-size:11px;text-transform:uppercase;letter-spacing:.08em}.pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#e6eee5;font-size:11px;font-weight:800}.right{text-align:right}.invoice{max-width:900px;margin:0 auto;background:white;padding:35px;border:1px solid #ddd}.invoice h1{margin:0}.invhead{display:flex;justify-content:space-between;gap:20px;border-bottom:2px solid var(--green);padding-bottom:18px}.totals{margin-left:auto;max-width:340px}.totals div{display:flex;justify-content:space-between;padding:6px 0}.total{font-size:20px;font-weight:900;border-top:2px solid var(--green);margin-top:6px;padding-top:10px}.danger{background:#fce5e0;color:#9b2c1c}.muted{color:var(--muted)}@media(max-width:750px){.grid,.fields{grid-template-columns:1fr}.field.full{grid-column:auto}.head{align-items:flex-start}.invoice{padding:18px}.invhead{display:block}.hide-mobile{display:none}}@media print{header,.tabs,.no-print{display:none!important}body{background:white}.wrap{margin:0;padding:0}.invoice{border:0;box-shadow:none;max-width:none}}
+</style>
+</head>
+<body>
+<header><div class="head"><div class="brand">GARHWAL TOUR N ADVENTURE<small>Booking & Billing</small></div><div class="muted" style="color:#b7ccc0;font-size:12px">Uttarakhand · MSME UDYAM-UK-11-0006387</div></div></header>
+<div class="wrap">
+<div class="tabs no-print"><button class="tab active" data-tab="booking">New Booking</button><button class="tab" data-tab="bookings">Bookings</button><button class="tab" data-tab="invoice">Invoice</button></div>
+
+<section id="booking">
+<div class="notice"><b>GST:</b> 5% included in the customer price. Customer ID and phone are compulsory. Data is stored in this browser on this device.</div>
+<form id="form">
+<div class="grid">
+<div class="card"><h2>Company details</h2><div class="fields">
+<div class="field full"><label>Company name</label><input id="company" value="Garhwal Tour N Adventure" required></div>
+<div><label>Phone</label><input id="cphone" value="+91 80770 16559"></div><div><label>Email</label><input id="cemail" type="email"></div>
+<div><label>GSTIN</label><input id="gstin"></div><div><label>MSME / Udyam</label><input id="msme" value="UDYAM-UK-11-0006387"></div>
+</div></div>
+<div class="card"><h2>Customer / guest</h2><div class="fields">
+<div><label>Name <span class="required">*</span></label><input id="name" required></div><div><label>Phone <span class="required">*</span></label><input id="phone" required inputmode="tel"></div>
+<div><label>Email</label><input id="email" type="email"></div><div><label>ID type <span class="required">*</span></label><select id="idtype" required><option value="">Select</option><option>Aadhaar</option><option>Passport</option><option>Driving Licence</option><option>Voter ID</option><option>Other</option></select></div>
+<div class="field full"><label>ID number <span class="required">*</span></label><input id="idno" required></div>
+</div></div>
+<div class="card"><h2>Service</h2><div class="fields">
+<div><label>Service type <span class="required">*</span></label><select id="service" required><option value="">Select</option><option>Taxi</option><option>Bike Rental</option><option>Flight Ticket</option><option>Bus Ticket</option><option>Train Ticket</option><option>Rafting</option><option>Bungee Jumping</option><option>Tour</option></select></div>
+<div><label>Booking date</label><input id="date" type="date"></div><div><label>Number of pax</label><input id="pax" type="number" min="1" value="1"></div><div><label>Vehicle number</label><input id="vehicle" placeholder="Required for taxi/tour/bike"></div>
+<div><label>Driver name</label><input id="driver"></div><div><label>Driver phone</label><input id="driverPhone"></div>
+<div class="field full"><label>Tour / service details</label><textarea id="details" placeholder="Route, pickup, drop, ticket details, rafting slot, package details..."></textarea></div>
+</div></div>
+<div class="card"><h2>Billing & payment</h2><div class="fields">
+<div><label>Customer price (GST included) <span class="required">*</span></label><input id="price" type="number" min="0" step="0.01" required></div>
+<div><label>Advance</label><input id="advance" type="number" min="0" step="0.01" value="0"></div>
+<div><label>Received now</label><input id="received" type="number" min="0" step="0.01" value="0"></div>
+<div><label>Payment mode</label><select id="mode"><option>UPI</option><option>Cash</option></select></div>
+<div><label>Paid to</label><select id="paidto"><option>Owner</option><option>Driver</option></select></div>
+<div><label>Reference / note</label><input id="paymentNote"></div>
+</div><div class="actions"><button class="btn primary" type="submit">Save Booking & Create Invoice</button><button class="btn ghost" type="reset">Clear</button></div></div>
+</div></form>
+</section>
+
+<section id="bookings" class="hidden">
+<div class="card"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap"><h2>Bookings</h2><div><input id="search" placeholder="Search name / phone / invoice" style="width:260px;max-width:100%"></div></div></div>
+<div class="tablewrap" style="margin-top:16px"><table><thead><tr><th>Invoice</th><th>Customer</th><th>Service</th><th>Date</th><th>Total</th><th>Balance</th><th>Actions</th></tr></thead><tbody id="rows"></tbody></table></div>
+</section>
+
+<section id="invoice" class="hidden"><div class="actions no-print"><button class="btn dark" onclick="window.print()">Print / Save PDF</button><button class="btn ghost" onclick="showTab('bookings')">Back to bookings</button></div><div id="invoiceBox" class="invoice"><p class="muted">Select an invoice from Bookings.</p></div></section>
+</div>
+<script>
+const KEY='garhwal_booking_v3';let data=JSON.parse(localStorage.getItem(KEY)||'[]');let current=null;
+const $=id=>document.getElementById(id);
+function money(n){return '₹'+Number(n||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function save(){localStorage.setItem(KEY,JSON.stringify(data));renderRows()}
+function showTab(tab){document.querySelectorAll('section[id]').forEach(s=>s.classList.add('hidden'));$(tab).classList.remove('hidden');document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));if(tab==='bookings')renderRows()}
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+$('date').value=new Date().toISOString().slice(0,10);
+$('form').onsubmit=e=>{e.preventDefault();const price=+$('price').value,advance=+$('advance').value||0,received=+$('received').value||0;const paid=Math.min(price,advance+received),gst=price-price/1.05;
+const rec={id:Date.now(),invoice:'GTA-'+new Date().getFullYear()+'-'+String(data.length+1).padStart(4,'0'),company:$('company').value,cphone:$('cphone').value,cemail:$('cemail').value,gstin:$('gstin').value,msme:$('msme').value,name:$('name').value,phone:$('phone').value,email:$('email').value,idtype:$('idtype').value,idno:$('idno').value,service:$('service').value,date:$('date').value,pax:$('pax').value,vehicle:$('vehicle').value,driver:$('driver').value,driverPhone:$('driverPhone').value,details:$('details').value,price,advance,received,paid,mode:$('mode').value,paidto:$('paidto').value,paymentNote:$('paymentNote').value,gst};
+data.unshift(rec);current=rec;save();renderInvoice(rec);showTab('invoice');e.target.reset();$('date').value=new Date().toISOString().slice(0,10);$('company').value=rec.company;$('cphone').value=rec.cphone;$('msme').value=rec.msme};
+function renderRows(){const q=($('search')?.value||'').toLowerCase();$('rows').innerHTML=data.filter(r=>[r.invoice,r.name,r.phone,r.service].join(' ').toLowerCase().includes(q)).map(r=>'<tr><td><b>'+r.invoice+'</b></td><td>'+r.name+'<br><small>'+r.phone+'</small></td><td><span class="pill">'+r.service+'</span></td><td>'+r.date+'</td><td>'+money(r.price)+'</td><td>'+money(r.price-r.paid)+'</td><td><button class="btn ghost" onclick="openInvoice('+r.id+')">View</button> <button class="btn danger" onclick="delRec('+r.id+')">Delete</button></td></tr>').join('')||'<tr><td colspan="7">No bookings found.</td></tr>'}
+$('search').oninput=renderRows;
+window.openInvoice=id=>{const r=data.find(x=>x.id===id);if(r){current=r;renderInvoice(r);showTab('invoice')}};
+window.delRec=id=>{if(confirm('Delete this booking?')){data=data.filter(x=>x.id!==id);save()}};
+function renderInvoice(r){const balance=r.price-r.paid;const title=r.company||'Garhwal Tour N Adventure';$('invoiceBox').innerHTML='<div class="invhead"><div><h1>'+title+'</h1><div class="muted">Uttarakhand, India · '+(r.cphone||'')+'</div><div class="muted">MSME: '+(r.msme||'—')+(r.gstin?' · GSTIN: '+r.gstin:'')+'</div></div><div class="right"><b>'+r.invoice+'</b><br><span class="muted">'+r.date+'</span></div></div><div style="margin-top:24px;display:grid;grid-template-columns:1fr 1fr;gap:18px"><div><b>Guest</b><p>'+r.name+'<br>'+r.phone+(r.email?'<br>'+r.email:'')+'<br>'+r.idtype+': '+r.idno+'</p></div><div><b>Service</b><p>'+r.service+' · '+r.pax+' pax<br>'+((r.vehicle&&'Vehicle: '+r.vehicle+'<br>')||'')+((r.driver&&'Driver: '+r.driver+' '+(r.driverPhone||'')+'<br>')||'')+(r.details||'')+'</p></div></div><hr><div class="totals"><div><span>Customer price (GST incl.)</span><b>'+money(r.price)+'</b></div><div><span>GST component (5%)</span><b>'+money(r.gst)+'</b></div><div><span>Advance</span><b>'+money(r.advance)+'</b></div><div><span>Received</span><b>'+money(r.received)+'</b></div><div><span>Total paid</span><b>'+money(r.paid)+'</b></div><div class="total"><span>Balance</span><b>'+money(balance)+'</b></div></div><p style="margin-top:28px;font-size:13px"><b>Payment:</b> '+r.mode+' · Paid to '+r.paidto+(r.paymentNote?' · '+r.paymentNote:'')+'</p><p class="muted" style="margin-top:35px;font-size:11px">Price is inclusive of GST. This invoice is generated by Garhwal Tour N Adventure.</p>'}
+renderRows();
+</script>
+</body></html>
