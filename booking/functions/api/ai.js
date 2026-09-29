@@ -35,7 +35,6 @@ export async function onRequest(context){
 
   const payload={
     model:env.OPENAI_MODEL||'gpt-5.6-luna',
-    tools:[{type:'web_search'}],
     input:[
       {role:'system',content:systemPrompt},
       {role:'user',content:message}
@@ -49,6 +48,6 @@ export async function onRequest(context){
     body:JSON.stringify(payload)
   });
   const data=await r.json();
-  if(!r.ok) return cors({error:'AI request failed.',detail:data?.error?.message||'Unknown error.'},502);
+  if(!r.ok) return cors({error:'AI request failed.',detail:data?.error?.message||('OpenAI HTTP '+r.status),status:r.status},502);
   return cors({answer:data.output_text||'I could not find a useful answer. Please try asking in a different way.'});
 }
