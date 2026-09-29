@@ -39,6 +39,27 @@ async function sendConfirmationEmail(env,b){
  const r=await fetch('https://api.resend.com/emails',{method:'POST',headers:{'Authorization':'Bearer '+apiKey,'Content-Type':'application/json'},body:JSON.stringify({from,to:[b.email],subject,text})});
  return {sent:r.ok,status:r.status};
 }
+async function sendWhatsAppConfirmation(env,b){
+ const token=env.WHATSAPP_ACCESS_TOKEN;
+ const phoneNumberId=env.WHATSAPP_PHONE_NUMBER_ID;
+ const template=env.WHATSAPP_CONFIRMATION_TEMPLATE;
+ if(!token||!phoneNumberId||!template)return {sent:false,reason:'whatsapp_not_configured'};
+ const to=String(b.phone||'').replace(/\\D/g,'');
+ if(!to)return {sent:false,reason:'guest_phone_missing'};
+ const version=env.WHATSAPP_GRAPH_VERSION||'v23.0';
+ const url='https://graph.facebook.com/'+version+'/'+phoneNumberId+'/messages';
+ const body={messaging_product:'whatsapp',to,type:'template',template:{name:template,language:{code:env.WHATSAPP_TEMPLATE_LANGUAGE||'en_US'},components:[{type:'body',parameters:[
+  {type:'text',text:String(b.name||'Guest')},
+  {type:'text',text:String(b.booking_ref||'')},
+  {type:'text',text:String(b.service||'')},
+  {type:'text',text:String(b.date||'')},
+  {type:'text',text:String(b.vehicle||'To be confirmed')},
+  {type:'text',text:String(b.driver||'To be confirmed')}
+ ]}]}};
+ const r=await fetch(url,{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(body)});
+ let data=null;try{data=await r.json()}catch(e){}
+ return {sent:r.ok,status:r.status,error:r.ok?null:(data&&data.error&&data.error.message)||'whatsapp_send_error'};
+}
 function id(){return crypto.randomUUID()}
 function ref(){return 'GTA-'+new Date().getFullYear()+'-'+Date.now().toString().slice(-6)}
 export async function onRequest(context){
@@ -69,7 +90,14 @@ export async function onRequest(context){
   await env.DB.prepare('UPDATE bookings SET status=?,vehicle=?,driver=?,driver_phone=?,price=?,advance=?,received=?,paid=?,mode=?,paidto=?,gst=?,admin_note=? WHERE id=?').bind(b.status||'New',b.vehicle||'',b.driver||'',b.driver_phone||'',price,advance,received,paid,b.mode||'UPI',b.paidto||'Owner',gst,b.admin_note||'',bid).run();
   const saved=await env.DB.prepare('SELECT * FROM bookings WHERE id=?').bind(bid).first();
   let notification=null;
-  if((b.notify_email||false)===true && saved.email){try{notification=await sendConfirmationEmail(env,saved)}catch(e){notification={sent:false,reason:'email_send_error'}}}
+  const becameConfirmed=String(exists.status||'')!=='Confirmed' && String(saved.status||'')==='Confirmed';
+  if(becameConfirmed || (b.notify_email||false)===true){
+   const notifications={};
+   if(saved.email){try{notifications.email=await sendConfirmationEmail(env,saved)}catch(e){notifications.email={sent:false,reason:'email_send_error'}}}
+   else notifications.email={sent:false,reason:'guest_email_missing'};
+   try{notifications.whatsapp=await sendWhatsAppConfirmation(env,saved)}catch(e){notifications.whatsapp={sent:false,reason:'whatsapp_send_error'}}
+   notification=notifications;
+  }
   return json({booking:saved,notification});
  }
  if(method==='DELETE'){await env.DB.prepare('DELETE FROM bookings WHERE id=?').bind(bid).run();return json({ok:true})}
