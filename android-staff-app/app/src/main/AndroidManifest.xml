@@ -9,6 +9,7 @@
         android:supportsRtl="true"
         android:usesCleartextTraffic="false"
         android:icon="@drawable/ic_launcher">
+        <meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="garhwal_bookings_v3" />
         <activity
             android:name=".MainActivity"
             android:screenOrientation="portrait"
