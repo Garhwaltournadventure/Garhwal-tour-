@@ -8,12 +8,16 @@ async function hashPassword(password,salt){
 }
 function authAdmin(request,env){const p=env.ADMIN_PASSWORD||env['ADMIN-PASSWORD'];return !!p&&request.headers.get('x-admin-password')===p}
 async function setup(db){
- await db.prepare(`CREATE TABLE IF NOT EXISTS staff_users (id TEXT PRIMARY KEY, username TEXT NOT NULL UNIQUE, display_name TEXT NOT NULL, password_hash TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'worker', active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL)`).run();
+ await db.prepare(`CREATE TABLE IF NOT EXISTS staff_users (id TEXT PRIMARY KEY, username TEXT NOT NULL UNIQUE, display_name TEXT NOT NULL, password_hash TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'worker', designation TEXT NOT NULL DEFAULT 'Staff', permissions TEXT NOT NULL DEFAULT '{}', active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL)`).run();
+ try{await db.prepare(`ALTER TABLE staff_users ADD COLUMN designation TEXT NOT NULL DEFAULT 'Staff'`).run()}catch(e){}
+ try{await db.prepare(`ALTER TABLE staff_users ADD COLUMN permissions TEXT NOT NULL DEFAULT '{}'`).run()}catch(e){}
  await db.prepare(`CREATE TABLE IF NOT EXISTS staff_sessions (token TEXT PRIMARY KEY, user_id TEXT NOT NULL, role TEXT NOT NULL, expires_at TEXT NOT NULL)`).run();
 }
 async function session(request,db){
  const token=request.headers.get('x-staff-token');if(!token)return null;
- return await db.prepare('SELECT s.*,u.username,u.display_name,u.active FROM staff_sessions s JOIN staff_users u ON u.id=s.user_id WHERE s.token=? AND s.expires_at>? AND u.active=1').bind(token,new Date().toISOString()).first();
+ const u=await db.prepare('SELECT s.*,u.username,u.display_name,u.designation,u.permissions,u.active FROM staff_sessions s JOIN staff_users u ON u.id=s.user_id WHERE s.token=? AND s.expires_at>? AND u.active=1').bind(token,new Date().toISOString()).first();
+ if(u){try{u.permissions=JSON.parse(u.permissions||'{}')}catch(e){u.permissions={}}}
+ return u;
 }
 export async function onRequest({request,env}){
  if(!env.DB)return json({error:'Database is not configured.'},503);
@@ -28,7 +32,7 @@ export async function onRequest({request,env}){
   const token=crypto.randomUUID()+crypto.randomUUID().replaceAll('-','');
   const exp=new Date(Date.now()+7*86400000).toISOString();
   await db.prepare('INSERT INTO staff_sessions(token,user_id,role,expires_at) VALUES(?,?,?,?)').bind(token,u.id,u.role,exp).run();
-  return json({token,user:{id:u.id,username:u.username,display_name:u.display_name,role:u.role}});
+  return json({token,user:{id:u.id,username:u.username,display_name:u.display_name,designation:u.designation||'Staff',permissions:JSON.parse(u.permissions||'{}'),role:u.role}});
  }
  if(request.method==='POST'&&a==='admin-login'){
   if(!authAdmin(request,env))return json({error:'Unauthorized'},401);
@@ -41,7 +45,7 @@ export async function onRequest({request,env}){
   }
   const token=crypto.randomUUID()+crypto.randomUUID().replaceAll('-','');const exp=new Date(Date.now()+7*86400000).toISOString();
   await db.prepare('INSERT INTO staff_sessions(token,user_id,role,expires_at) VALUES(?,?,?,?)').bind(token,user.id,'admin',exp).run();
-  return json({token,user:{id:user.id,username:'admin',display_name:user.display_name,role:'admin'}});
+  return json({token,user:{id:user.id,username:'admin',display_name:user.display_name,designation:'Administrator',permissions:{all:true},role:'admin'}});
  }
  const s=await session(request,db);
  if(request.method==='POST'&&a==='register-token'){
@@ -52,25 +56,28 @@ export async function onRequest({request,env}){
   await db.prepare('INSERT INTO device_tokens(token,user_id,role,active,created_at,updated_at) VALUES(?,?,?,?,?,?) ON CONFLICT(token) DO UPDATE SET user_id=excluded.user_id,role=excluded.role,active=1,updated_at=excluded.updated_at').bind(t,s.user_id,s.role,1,now,now).run();
   return json({ok:true});
  }
- if(request.method==='GET'&&a==='me'){return s?json({user:{id:s.user_id,username:s.username,display_name:s.display_name,role:s.role}}):json({error:'Unauthorized'},401)}
+ if(request.method==='GET'&&a==='me'){return s?json({user:{id:s.user_id,username:s.username,display_name:s.display_name,designation:s.designation||'Staff',permissions:s.role==='admin'?{all:true}:s.permissions||{},role:s.role}}):json({error:'Unauthorized'},401)}
  if(request.method==='GET'&&a==='users'){
   if(!s||s.role!=='admin')return json({error:'Unauthorized'},401);
-  const r=await db.prepare('SELECT id,username,display_name,role,active,created_at FROM staff_users ORDER BY display_name').all();return json({users:r.results||[]});
+  const r=await db.prepare('SELECT id,username,display_name,role,designation,permissions,active,created_at FROM staff_users ORDER BY display_name').all();return json({users:r.results||[]});
  }
  if(request.method==='POST'&&a==='users'){
   if(!s||s.role!=='admin')return json({error:'Unauthorized'},401);
   let b;try{b=await request.json()}catch{return json({error:'Invalid JSON'},400)}
-  const username=String(b.username||'').trim().toLowerCase(),display=String(b.display_name||'').trim(),password=String(b.password||'');
+  const username=String(b.username||'').trim().toLowerCase(),display=String(b.display_name||'').trim(),password=String(b.password||''),designation=String(b.designation||'Staff').trim()||'Staff',permissions=b.permissions&&typeof b.permissions==='object'?b.permissions:{};
   if(!username||!display||password.length<4)return json({error:'Username, display name and a 4+ character password are required.'},400);
   if(username==='admin')return json({error:'Reserved username.'},400);
   const ph=await hashPassword(password,username);
-  try{await db.prepare('INSERT INTO staff_users(id,username,display_name,password_hash,role,active,created_at) VALUES(?,?,?,?,?,?,?)').bind(crypto.randomUUID(),username,display,ph,'worker',1,new Date().toISOString()).run();return json({ok:true})}catch(e){return json({error:'Username already exists.'},409)}
+  try{await db.prepare('INSERT INTO staff_users(id,username,display_name,password_hash,role,designation,permissions,active,created_at) VALUES(?,?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(),username,display,ph,'worker',designation,JSON.stringify(permissions),1,new Date().toISOString()).run();return json({ok:true})}catch(e){return json({error:'Username already exists.'},409)}
  }
  if(request.method==='PATCH'&&a==='users'){
   if(!s||s.role!=='admin')return json({error:'Unauthorized'},401);
   let b;try{b=await request.json()}catch{return json({error:'Invalid JSON'},400)}
   if(!b.id)return json({error:'Missing user id'},400);
-  await db.prepare('UPDATE staff_users SET active=? WHERE id=? AND username<>?').bind(b.active?1:0,b.id,'admin').run();return json({ok:true});
+  if(b.permissions&&typeof b.permissions==='object'){await db.prepare('UPDATE staff_users SET active=?,designation=?,permissions=? WHERE id=? AND username<>?').bind(b.active?1:0,String(b.designation||'Staff'),JSON.stringify(b.permissions),b.id,'admin').run()}
+  else if(b.designation){await db.prepare('UPDATE staff_users SET active=?,designation=? WHERE id=? AND username<>?').bind(b.active?1:0,String(b.designation),b.id,'admin').run()}
+  else await db.prepare('UPDATE staff_users SET active=? WHERE id=? AND username<>?').bind(b.active?1:0,b.id,'admin').run();
+  return json({ok:true});
  }
  if(request.method==='GET'&&a==='bookings'){
   if(!s)return json({error:'Unauthorized'},401);
