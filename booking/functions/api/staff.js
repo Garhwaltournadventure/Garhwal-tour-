@@ -44,6 +44,14 @@ export async function onRequest({request,env}){
   return json({token,user:{id:user.id,username:'admin',display_name:user.display_name,role:'admin'}});
  }
  const s=await session(request,db);
+ if(request.method==='POST'&&a==='register-token'){
+  if(!s)return json({error:'Unauthorized'},401);
+  let b;try{b=await request.json()}catch{return json({error:'Invalid JSON'},400)}
+  const t=String(b.token||'').trim();if(!t)return json({error:'Missing token'},400);
+  const now=new Date().toISOString();
+  await db.prepare('INSERT INTO device_tokens(token,user_id,role,active,created_at,updated_at) VALUES(?,?,?,?,?,?) ON CONFLICT(token) DO UPDATE SET user_id=excluded.user_id,role=excluded.role,active=1,updated_at=excluded.updated_at').bind(t,s.user_id,s.role,1,now,now).run();
+  return json({ok:true});
+ }
  if(request.method==='GET'&&a==='me'){return s?json({user:{id:s.user_id,username:s.username,display_name:s.display_name,role:s.role}}):json({error:'Unauthorized'},401)}
  if(request.method==='GET'&&a==='users'){
   if(!s||s.role!=='admin')return json({error:'Unauthorized'},401);
