@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600">
+<rect width="600" height="600" fill="#fff"/>
+<circle cx="300" cy="300" r="278" fill="none" stroke="#063b2b" stroke-width="18"/>
+<circle cx="300" cy="300" r="255" fill="none" stroke="#f36b08" stroke-width="8"/>
+<circle cx="300" cy="185" r="75" fill="#f36b08"/>
+<g fill="#063b2b">
+<path d="M55 315 L155 225 205 270 305 145 395 255 450 205 550 320 430 292 380 270 305 220 240 292 190 260 125 318z"/>
+<path fill="#fff" d="M305 145 L280 185 305 172 323 204 344 177 380 270 305 220 240 292 270 245z"/>
+<path fill="#fff" d="M155 225 L135 258 162 245 180 268 205 270z"/>
+<path fill="#fff" d="M450 205 L425 242 450 232 472 258 490 270z"/>
+</g>
+<g fill="#063b2b">
+<path d="M425 302 l12 -25 12 25 8 -18 10 18 8 -12 8 12 v30 h-58z"/>
+<path d="M465 310 l10 -23 10 23 7 -15 8 15 7 -10 7 10 v24 h-49z"/>
+<path d="M500 318 l9 -20 9 20 6 -12 7 12 6 -9 6 9 v20 h-43z"/>
+</g>
+<g fill="none" stroke="#063b2b" stroke-width="13" stroke-linecap="round">
+<path d="M275 285 C355 275 405 292 430 315"/>
+<path d="M250 315 C330 300 385 312 415 335"/>
+<path d="M225 345 C305 330 355 340 385 360"/>
+</g>
+<g fill="#063b2b">
+<path d="M410 135 q18 -15 36 0 q-18 -4 -36 0z"/>
+<path d="M470 165 q18 -15 36 0 q-18 -4 -36 0z"/>
+<path d="M515 195 q15 -12 30 0 q-15 -3 -30 0z"/>
+</g>
+<text x="300" y="390" text-anchor="middle" font-family="Arial,sans-serif" font-size="78" font-weight="900" fill="#063b2b">GARHWAL</text>
+<text x="300" y="425" text-anchor="middle" font-family="Arial,sans-serif" font-size="25" font-weight="700" letter-spacing="4" fill="#063b2b">TOUR <tspan fill="#f36b08">N</tspan> ADVENTURE</text>
+<path d="M190 447 H410" stroke="#f36b08" stroke-width="4"/>
+<text x="300" y="475" text-anchor="middle" font-family="Arial,sans-serif" font-size="16" letter-spacing="6" fill="#063b2b">TRAVEL BEYOND BORDERS</text>
+<circle cx="300" cy="515" r="13" fill="#f36b08"/>
+<path d="M300 535 l-10 -18 h20z" fill="#f36b08"/>
+<text x="300" y="558" text-anchor="middle" font-family="Arial,sans-serif" font-size="15" letter-spacing="5" fill="#063b2b">UTTARAKHAND</text>
+</svg>
