@@ -20,19 +20,17 @@
 <div class="grid">
 <div class="card"><h2>Company details</h2><div class="fields">
 <div class="field full"><label>Company name</label><input id="company" value="Garhwal Tour N Adventure" required></div>
-<div><label>Phone</label><input id="cphone" value="+91 80770 16559"></div><div><label>Email</label><input id="cemail" type="email"></div>
-<div><label>GSTIN</label><input id="gstin"></div><div><label>MSME / Udyam</label><input id="msme" value="UDYAM-UK-11-0006387"></div>
+<div><label>Phone</label><input id="cphone" value="+91 80770 16559"></div><div><label>Email</label><input id="cemail" type="email" value="mangaljethuri7@gmail.com" readonly></div>
+<div><label>MSME / Udyam</label><input id="msme" value="UDYAM-UK-11-0006387"></div>
 </div></div>
 <div class="card"><h2>Customer / guest</h2><div class="fields">
 <div><label>Name <span class="required">*</span></label><input id="name" required></div><div><label>Phone <span class="required">*</span></label><input id="phone" required inputmode="tel"></div>
-<div><label>Email</label><input id="email" type="email"></div><div><label>ID type <span class="required">*</span></label><select id="idtype" required><option value="">Select</option><option>Aadhaar</option><option>Passport</option><option>Driving Licence</option><option>Voter ID</option><option>Other</option></select></div>
-<div class="field full"><label>ID number <span class="required">*</span></label><input id="idno" required></div>
+<div><label>Email</label><input id="email" type="email"></div><div><label>ID type</label><select id="idtype"><option value="">Select</option><option>Aadhaar</option><option>Passport</option><option>Driving Licence</option><option>Voter ID</option><option>Other</option></select></div>
+<div class="field full"><label>ID number</label><input id="idno"></div>
 </div></div>
 <div class="card"><h2>Service</h2><div class="fields">
 <div><label>Service type <span class="required">*</span></label><select id="service" required><option value="">Select</option><option>Taxi</option><option>Bike Rental</option><option>Flight Ticket</option><option>Bus Ticket</option><option>Train Ticket</option><option>Rafting</option><option>Bungee Jumping</option><option>Tour</option></select></div>
-<div><label>Booking date</label><input id="date" type="date"></div><div><label>Number of pax</label><input id="pax" type="number" min="1" value="1"></div><div><label>Vehicle number</label><input id="vehicle" placeholder="Required for taxi/tour/bike"></div>
-<div><label>Driver name</label><input id="driver"></div><div><label>Driver phone</label><input id="driverPhone"></div>
-<div class="field full"><label>Tour / service details</label><textarea id="details" placeholder="Route, pickup, drop, ticket details, rafting slot, package details..."></textarea></div>
+<div><label>Booking date</label><input id="date" type="date"></div><div><label>Number of pax</label><input id="pax" type="number" min="1" value="1"></div><div class="field full"><label>Tour / service details</label><textarea id="details" placeholder="Route, pickup, drop, ticket details, rafting slot, package details..."></textarea></div>
 </div></div>
 <div class="card"><h2>Booking confirmation</h2><div class="fields">
 <div class="field full"><label>Additional note</label><textarea id="paymentNote" placeholder="Any special request or note"></textarea></div>
