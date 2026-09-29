@@ -12,7 +12,7 @@
 <body>
 <header><div class="head"><div class="brand">GARHWAL TOUR N ADVENTURE<small>Booking & Billing</small></div><div class="muted" style="color:#b7ccc0;font-size:12px">Uttarakhand · MSME UDYAM-UK-11-0006387</div></div></header>
 <div class="wrap">
-<div class="tabs no-print"><button class="tab active" data-tab="booking">Booking Form</button></div>
+<div class="tabs no-print"><button class="tab active" data-tab="booking">Booking Form</button><button class="tab" data-tab="admin">Admin</button></div>
 
 <section id="booking">
 <div class="notice"><b>Booking Form:</b> Please enter your details and trip/service requirements. Our team will confirm the booking with you.</div>
@@ -38,7 +38,20 @@
 </div></form>
 </section>
 
-<section id="bookings" class="hidden" aria-hidden="true" style="display:none">
+<section id="admin" class="hidden">
+<div id="adminLogin" class="card"><h2>Admin / Travel Agent</h2><p class="muted">Private management area. Enter your admin password.</p><div class="fields"><div><label>Password</label><input id="adminPassword" type="password"></div></div><div class="actions"><button class="btn primary" id="adminLoginBtn">Login</button></div><p id="adminMsg" class="muted"></p></div>
+<div id="adminPanel" class="hidden">
+<div class="card"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap"><h2>Booking Management</h2><input id="adminSearch" placeholder="Search name / phone / booking" style="width:260px;max-width:100%"></div></div>
+<div class="tablewrap" style="margin-top:16px"><table><thead><tr><th>Booking</th><th>Guest</th><th>Service</th><th>Status</th><th>Vehicle / Driver</th><th>Payment</th><th>Actions</th></tr></thead><tbody id="adminRows"></tbody></table></div>
+<div id="adminEditor" class="card hidden" style="margin-top:16px"><h2>Manage Booking</h2><div class="fields">
+<div><label>Booking ID</label><input id="eBooking" readonly></div><div><label>Status</label><select id="eStatus"><option>New</option><option>Confirmed</option><option>Cancelled</option><option>Completed</option></select></div>
+<div><label>Vehicle number</label><input id="eVehicle"></div><div><label>Driver name</label><input id="eDriver"></div>
+<div><label>Driver phone</label><input id="eDriverPhone"></div><div><label>Customer price (GST included)</label><input id="ePrice" type="number" min="0" step="0.01"></div>
+<div><label>Advance</label><input id="eAdvance" type="number" min="0" step="0.01"></div><div><label>Received now</label><input id="eReceived" type="number" min="0" step="0.01"></div>
+<div><label>Payment mode</label><select id="eMode"><option>UPI</option><option>Cash</option></select></div><div><label>Paid to</label><select id="ePaidto"><option>Owner</option><option>Driver</option></select></div>
+<div class="field full"><label>Admin note</label><textarea id="eAdminNote"></textarea></div>
+</div><div class="actions"><button class="btn primary" id="saveEdit">Save Changes</button><button class="btn ghost" id="cancelEdit">Cancel</button><button class="btn dark" id="printEdit">Print Invoice</button></div></div>
+</div></section>
 <div class="card"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap"><h2>Bookings</h2><div><input id="search" placeholder="Search name / phone / invoice" style="width:260px;max-width:100%"></div></div></div>
 <div class="tablewrap" style="margin-top:16px"><table><thead><tr><th>Invoice</th><th>Customer</th><th>Service</th><th>Date</th><th>Total</th><th>Balance</th><th>Actions</th></tr></thead><tbody id="rows"></tbody></table></div>
 </section>
@@ -46,21 +59,61 @@
 <section id="invoice" class="hidden" aria-hidden="true" style="display:none"><div class="actions no-print"><button class="btn dark" onclick="window.print()">Print / Save PDF</button><button class="btn ghost" onclick="showTab('bookings')">Back to bookings</button></div><div id="invoiceBox" class="invoice"><p class="muted">Select an invoice from Bookings.</p></div></section>
 </div>
 <script>
-const KEY='garhwal_booking_v3';let data=JSON.parse(localStorage.getItem(KEY)||'[]');let current=null;
 const $=id=>document.getElementById(id);
+let data=[], current=null, adminPassword='';
 function money(n){return '₹'+Number(n||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2})}
-function save(){localStorage.setItem(KEY,JSON.stringify(data));renderRows()}
-function showTab(tab){document.querySelectorAll('section[id]').forEach(s=>s.classList.add('hidden'));$(tab).classList.remove('hidden');document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));if(tab==='bookings')renderRows()}
+function showTab(tab){
+document.querySelectorAll('section[id]').forEach(s=>s.classList.add('hidden'));
+$(tab).classList.remove('hidden');
+document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
+if(tab==='admin'&&adminPassword) loadAdmin();
+}
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
 $('date').value=new Date().toISOString().slice(0,10);
-$('form').onsubmit=e=>{e.preventDefault();const price=0,advance=0,received=0;const paid=0,gst=0;
-const rec={id:Date.now(),invoice:'GTA-'+new Date().getFullYear()+'-'+String(data.length+1).padStart(4,'0'),company:$('company').value,cphone:$('cphone').value,cemail:$('cemail').value,gstin:$('gstin').value,msme:$('msme').value,name:$('name').value,phone:$('phone').value,email:$('email').value,idtype:$('idtype').value,idno:$('idno').value,service:$('service').value,date:$('date').value,pax:$('pax').value,vehicle:$('vehicle').value,driver:$('driver').value,driverPhone:$('driverPhone').value,details:$('details').value,price,advance,received,paid,mode:$('mode').value,paidto:$('paidto').value,paymentNote:$('paymentNote').value,gst};
-data.unshift(rec);current=rec;save();alert('Booking request submitted successfully. Our team will contact you for confirmation.');e.target.reset();$('date').value=new Date().toISOString().slice(0,10);$('company').value=rec.company;$('cphone').value=rec.cphone;$('msme').value=rec.msme};
-function renderRows(){const q=($('search')?.value||'').toLowerCase();$('rows').innerHTML=data.filter(r=>[r.invoice,r.name,r.phone,r.service].join(' ').toLowerCase().includes(q)).map(r=>'<tr><td><b>'+r.invoice+'</b></td><td>'+r.name+'<br><small>'+r.phone+'</small></td><td><span class="pill">'+r.service+'</span></td><td>'+r.date+'</td><td>'+money(r.price)+'</td><td>'+money(r.price-r.paid)+'</td><td><button class="btn ghost" onclick="openInvoice('+r.id+')">View</button> <button class="btn danger" onclick="delRec('+r.id+')">Delete</button></td></tr>').join('')||'<tr><td colspan="7">No bookings found.</td></tr>'}
-$('search').oninput=renderRows;
-window.openInvoice=id=>{const r=data.find(x=>x.id===id);if(r){current=r;renderInvoice(r);showTab('invoice')}};
-window.delRec=id=>{if(confirm('Delete this booking?')){data=data.filter(x=>x.id!==id);save()}};
-function renderInvoice(r){const balance=r.price-r.paid;const title=r.company||'Garhwal Tour N Adventure';$('invoiceBox').innerHTML='<div class="invhead"><div><h1>'+title+'</h1><div class="muted">Uttarakhand, India · '+(r.cphone||'')+'</div><div class="muted">MSME: '+(r.msme||'—')+(r.gstin?' · GSTIN: '+r.gstin:'')+'</div></div><div class="right"><b>'+r.invoice+'</b><br><span class="muted">'+r.date+'</span></div></div><div style="margin-top:24px;display:grid;grid-template-columns:1fr 1fr;gap:18px"><div><b>Guest</b><p>'+r.name+'<br>'+r.phone+(r.email?'<br>'+r.email:'')+'<br>'+r.idtype+': '+r.idno+'</p></div><div><b>Service</b><p>'+r.service+' · '+r.pax+' pax<br>'+((r.vehicle&&'Vehicle: '+r.vehicle+'<br>')||'')+((r.driver&&'Driver: '+r.driver+' '+(r.driverPhone||'')+'<br>')||'')+(r.details||'')+'</p></div></div><hr><div class="totals"><div><span>Customer price (GST incl.)</span><b>'+money(r.price)+'</b></div><div><span>GST component (5%)</span><b>'+money(r.gst)+'</b></div><div><span>Advance</span><b>'+money(r.advance)+'</b></div><div><span>Received</span><b>'+money(r.received)+'</b></div><div><span>Total paid</span><b>'+money(r.paid)+'</b></div><div class="total"><span>Balance</span><b>'+money(balance)+'</b></div></div><p style="margin-top:28px;font-size:13px"><b>Payment:</b> '+r.mode+' · Paid to '+r.paidto+(r.paymentNote?' · '+r.paymentNote:'')+'</p><p class="muted" style="margin-top:35px;font-size:11px">Price is inclusive of GST. This invoice is generated by Garhwal Tour N Adventure.</p>'}
-renderRows();
+
+$('form').onsubmit=async e=>{
+e.preventDefault();
+const rec={company:$('company').value,cphone:$('cphone').value,cemail:$('cemail').value,msme:$('msme').value,name:$('name').value,phone:$('phone').value,email:$('email').value,idtype:$('idtype').value,idno:$('idno').value,service:$('service').value,date:$('date').value,pax:$('pax').value,details:$('details').value,paymentNote:$('paymentNote').value};
+try{
+const res=await fetch('/api/bookings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(rec)});
+if(!res.ok) throw new Error('Booking server unavailable');
+await res.json();
+alert('Booking request submitted successfully. Our team will contact you for confirmation.');
+e.target.reset();$('date').value=new Date().toISOString().slice(0,10);$('company').value='Garhwal Tour N Adventure';$('cphone').value='+91 80770 16559';$('cemail').value='mangaljethuri7@gmail.com';$('msme').value='UDYAM-UK-11-0006387';
+}catch(err){alert('Booking could not be submitted. Please try again or contact us on WhatsApp.');}
+};
+
+$('adminLoginBtn').onclick=async()=>{
+adminPassword=$('adminPassword').value;
+if(!adminPassword)return;
+try{const res=await fetch('/api/bookings',{headers:{'x-admin-password':adminPassword}});
+if(!res.ok)throw new Error();
+$('adminLogin').classList.add('hidden');$('adminPanel').classList.remove('hidden');$('adminMsg').textContent='';await loadAdmin();
+}catch(e){$('adminMsg').textContent='Invalid password or admin service is not configured.';adminPassword='';}
+};
+
+async function api(path,options={}){options.headers={...(options.headers||{}),'x-admin-password':adminPassword,'Content-Type':'application/json'};const r=await fetch(path,options);if(!r.ok)throw new Error(await r.text());return r.json()}
+async function loadAdmin(){
+try{const result=await api('/api/bookings');data=result.bookings||[];renderAdminRows()}catch(e){$('adminMsg').textContent='Could not load bookings.'}
+}
+function renderAdminRows(){
+const q=($('adminSearch').value||'').toLowerCase();
+const rows=data.filter(r=>[r.id,r.name,r.phone,r.service].join(' ').toLowerCase().includes(q));
+$('adminRows').innerHTML=rows.map(r=>'<tr><td><b>'+r.booking_ref+'</b><br><small>'+r.date+'</small></td><td>'+r.name+'<br><small>'+r.phone+'</small></td><td><span class="pill">'+r.service+'</span></td><td>'+r.status+'</td><td>'+((r.vehicle||'—'))+'<br><small>'+((r.driver||'—'))+'</small></td><td>'+money(r.paid)+' / '+money(r.price)+'</td><td><button class="btn ghost" onclick="editBooking(\''+r.id+'\')">Edit</button></td></tr>').join('')||'<tr><td colspan="7">No bookings found.</td></tr>';
+}
+$('adminSearch').oninput=renderAdminRows;
+window.editBooking=id=>{
+const r=data.find(x=>x.id===id);if(!r)return;current=r;
+$('adminEditor').classList.remove('hidden');$('eBooking').value=r.booking_ref;$('eStatus').value=r.status;$('eVehicle').value=r.vehicle||'';$('eDriver').value=r.driver||'';$('eDriverPhone').value=r.driver_phone||'';$('ePrice').value=r.price||0;$('eAdvance').value=r.advance||0;$('eReceived').value=r.received||0;$('eMode').value=r.mode||'UPI';$('ePaidto').value=r.paidto||'Owner';$('eAdminNote').value=r.admin_note||'';
+};
+$('cancelEdit').onclick=()=>$('adminEditor').classList.add('hidden');
+$('saveEdit').onclick=async()=>{
+if(!current)return;
+const payload={status:$('eStatus').value,vehicle:$('eVehicle').value,driver:$('eDriver').value,driver_phone:$('eDriverPhone').value,price:+$('ePrice').value||0,advance:+$('eAdvance').value||0,received:+$('eReceived').value||0,mode:$('eMode').value,paidto:$('ePaidto').value,admin_note:$('eAdminNote').value};
+payload.paid=Math.min(payload.price,payload.advance+payload.received);payload.gst=payload.price-payload.price/1.05;
+try{const result=await api('/api/bookings?id='+encodeURIComponent(current.id),{method:'PATCH',body:JSON.stringify(payload)});current=result.booking;$('adminEditor').classList.add('hidden');await loadAdmin();alert('Booking updated.')}catch(e){alert('Could not save changes.')}
+};
+$('printEdit').onclick=()=>{if(!current)return;renderInvoice(current);showTab('invoice');setTimeout(()=>window.print(),100)};
+function renderInvoice(r){const balance=(+r.price||0)-(+r.paid||0);$('invoiceBox').innerHTML='<div class="invhead"><div><h1>Garhwal Tour N Adventure</h1><div class="muted">Uttarakhand, India · '+(r.cphone||'+91 80770 16559')+'</div><div class="muted">MSME: UDYAM-UK-11-0006387</div></div><div class="right"><b>'+r.booking_ref+'</b><br><span class="muted">'+r.date+'</span></div></div><div style="margin-top:24px;display:grid;grid-template-columns:1fr 1fr;gap:18px"><div><b>Guest</b><p>'+r.name+'<br>'+r.phone+(r.email?'<br>'+r.email:'')+(r.idtype?'<br>'+r.idtype+': '+r.idno:'')+'</p></div><div><b>Service</b><p>'+r.service+' · '+r.pax+' pax<br>'+((r.vehicle&&'Vehicle: '+r.vehicle+'<br>')||'')+((r.driver&&'Driver: '+r.driver+' '+(r.driver_phone||'')+'<br>')||'')+(r.details||'')+'</p></div></div><hr><div class="totals"><div><span>Customer price (GST incl.)</span><b>'+money(r.price)+'</b></div><div><span>GST component (5%)</span><b>'+money(r.gst)+'</b></div><div><span>Advance</span><b>'+money(r.advance)+'</b></div><div><span>Received</span><b>'+money(r.received)+'</b></div><div><span>Total paid</span><b>'+money(r.paid)+'</b></div><div class="total"><span>Balance</span><b>'+money(balance)+'</b></div></div><p style="margin-top:28px;font-size:13px"><b>Payment:</b> '+(r.mode||'—')+' · Paid to '+(r.paidto||'—')+(r.admin_note?' · '+r.admin_note:'')+'</p></div>'}
 </script>
 </body></html>
