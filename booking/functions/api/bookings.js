@@ -38,7 +38,7 @@ async function sendNewBookingPush(env,b){
  const tokens=(rows.results||[]).map(x=>x.token).filter(Boolean);
  let sent=0;
  for(const token of tokens){
-  const body={message:{token,notification:{title:'New Booking '+b.booking_ref,body:b.name+' • '+b.service+' • '+(b.date||'Date not set')},data:{booking_ref:String(b.booking_ref||''),guest:String(b.name||''),service:String(b.service||''),date:String(b.date||''),pax:String(b.pax||1),title:'New Booking '+b.booking_ref,body:b.name+' • '+b.service+' • '+(b.date||'Date not set')},android:{priority:'high',notification:{channel_id:'garhwal_bookings',click_action:'com.garhwaltournadventure.booking.OPEN_STAFF'}}}};
+  const body={message:{token,notification:{title:'New Booking '+b.booking_ref,body:b.name+' • '+b.service+' • '+(b.date||'Date not set')},data:{booking_ref:String(b.booking_ref||''),guest:String(b.name||''),service:String(b.service||''),date:String(b.date||''),pax:String(b.pax||1),title:'New Booking '+b.booking_ref,body:b.name+' • '+b.service+' • '+(b.date||'Date not set')},android:{priority:'high',notification:{channel_id:'garhwal_bookings_v2',click_action:'com.garhwaltournadventure.booking.OPEN_STAFF'}}}};
   const r=await fetch('https://fcm.googleapis.com/v1/projects/'+encodeURIComponent(sa.project_id)+'/messages:send',{method:'POST',headers:{Authorization:'Bearer '+accessToken,'Content-Type':'application/json'},body:JSON.stringify(body)});
   if(r.ok)sent++;
   else {
