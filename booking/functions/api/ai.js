@@ -12,8 +12,16 @@ function cors(body,status=200){
 
 export async function onRequest(context){
   const {request,env}=context;
-  if(request.method==='OPTIONS') return cors({},204);
-  if(request.method!=='POST') return cors({error:'Method not allowed'},405);
+  if(request.method==='OPTIONS'){
+  return new Response(null,{
+    status:204,
+    headers:{
+      'access-control-allow-origin':ALLOWED_ORIGIN,
+      'access-control-allow-headers':'content-type',
+      'access-control-allow-methods':'POST, OPTIONS'
+    }
+  });
+}
   if(!env.OPENAI_API_KEY) return cors({error:'AI service is not configured yet.'},503);
 
   let body;
