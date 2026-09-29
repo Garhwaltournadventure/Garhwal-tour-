@@ -1,7 +1,8 @@
 function json(data,status=200){return new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json'}})}
 function auth(request,env){
- const configuredPassword=env.ADMIN_PASSWORD||env["ADMIN-PASSWORD"];
- return !!configuredPassword && request.headers.get('x-admin-password')===configuredPassword;
+ const configuredPassword=String(env.ADMIN_PASSWORD||env["ADMIN-PASSWORD"]||"").trim();
+ const suppliedPassword=String(request.headers.get('x-admin-password')||"").trim();
+ return !!configuredPassword && suppliedPassword===configuredPassword;
 }
 function corsJson(data,status=200){
  return new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json','cache-control':'no-store'}});
