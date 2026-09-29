@@ -1,5 +1,8 @@
 function json(data,status=200){return new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json'}})}
-function auth(request,env){return !!env.ADMIN_PASSWORD && request.headers.get('x-admin-password')===env.ADMIN_PASSWORD}
+function auth(request,env){
+ const configuredPassword=env.ADMIN_PASSWORD||env["ADMIN-PASSWORD"];
+ return !!configuredPassword && request.headers.get('x-admin-password')===configuredPassword;
+}
 function id(){return crypto.randomUUID()}
 function ref(){return 'GTA-'+new Date().getFullYear()+'-'+Date.now().toString().slice(-6)}
 export async function onRequest(context){
