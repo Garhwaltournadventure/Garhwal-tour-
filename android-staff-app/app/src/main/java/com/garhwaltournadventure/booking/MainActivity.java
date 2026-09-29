@@ -32,16 +32,6 @@ public class MainActivity extends Activity {
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 1001);
         }
-        FirebaseMessaging.getInstance().getToken().addOnCompleteListener(task -> {
-            if (task.isSuccessful() && task.getResult() != null) {
-                String pushToken = task.getResult();
-                getSharedPreferences("fcm", MODE_PRIVATE).edit().putString("token", pushToken).apply();
-                if (webView != null) {
-                    webView.post(() -> webView.evaluateJavascript("if(typeof registerNativePush==='function'){registerNativePush();}", null));
-                }
-            }
-        });
-
         webView = new WebView(this);
         setContentView(webView);
         webView.getSettings().setJavaScriptEnabled(true);
@@ -59,6 +49,16 @@ public class MainActivity extends Activity {
             }
             @Override public boolean shouldOverrideUrlLoading(WebView view, String url) {
                 return handleUrl(url);
+            }
+            @Override public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                FirebaseMessaging.getInstance().getToken().addOnCompleteListener(task -> {
+                    if (task.isSuccessful() && task.getResult() != null) {
+                        String pushToken = task.getResult();
+                        getSharedPreferences("fcm", MODE_PRIVATE).edit().putString("token", pushToken).apply();
+                        view.post(() -> view.evaluateJavascript("if(typeof registerNativePush==='function'){registerNativePush();}", null));
+                    }
+                });
             }
         });
 
