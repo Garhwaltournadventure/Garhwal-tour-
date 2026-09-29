@@ -6,7 +6,43 @@
 *{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;background:var(--bg);color:#102f27}header{background:var(--green);color:#fff;padding:18px 22px;font-weight:900}header small{display:block;color:var(--gold);font-style:italic}main{max-width:1200px;margin:24px auto;padding:0 16px}.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px;box-shadow:0 5px 20px #063b2b0d}input,select,textarea{width:100%;box-sizing:border-box;padding:10px;border:1px solid #cbd6cf;border-radius:8px;background:#fbfcfa;color:#15322f}textarea{min-height:80px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.full{grid-column:1/-1}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.hidden{display:none}.table{overflow:auto;background:#fff;border:1px solid var(--line);border-radius:12px}table{width:100%;border-collapse:collapse;min-width:800px}th,td{padding:10px;border-bottom:1px solid var(--line);text-align:left;font-size:13px}th{background:#f5f8f5}.muted{color:var(--muted)}button,a{padding:10px 14px;border-radius:9px;border:0;font-weight:800;cursor:pointer;text-decoration:none;display:inline-block}.primary{background:var(--orange);color:#fff}.dark{background:var(--green);color:#fff}.ghost{background:#fff;color:var(--green);border:1px solid var(--line)}
 .invoice{background:#fff;max-width:900px;margin:auto;padding:30px;border:1px solid #dce5df;box-shadow:0 8px 30px #063b2b10}.invoice *{box-sizing:border-box}.invoiceTop{display:grid;grid-template-columns:125px 1fr 210px;gap:20px;align-items:center;border-bottom:2px solid var(--green);padding-bottom:20px}.logo{width:115px;height:115px}.company h1{font-size:28px;margin:0 0 4px;color:var(--green)}.tag{color:var(--orange);font-weight:900;font-size:15px}.contact{font-size:12px;color:var(--muted);line-height:1.65;margin-top:8px}.invoiceLabel{background:var(--green);color:#fff;border-radius:12px;padding:14px 16px;text-align:right}.invoiceLabel strong{display:block;font-size:23px;letter-spacing:.08em}.invoiceNo{font-size:14px;font-weight:900;margin-top:8px}.invoiceDate{font-size:12px;margin-top:3px;opacity:.9}.divider{display:flex;align-items:center;gap:12px;color:var(--green);font-size:11px;letter-spacing:.35em;font-weight:900;margin:18px 0}.divider:before,.divider:after{content:"";height:2px;background:var(--orange);flex:1}.panels{display:grid;grid-template-columns:1fr 1fr;gap:14px}.panel{border:1px solid var(--line);border-radius:12px;overflow:hidden}.panelTitle{padding:10px 14px;background:#e7f1eb;font-weight:900;font-size:15px;color:var(--green)}.panel:nth-child(2) .panelTitle{background:#fff0df}.panelBody{padding:13px 14px;font-size:13px;line-height:1.7;min-height:105px}.label{color:#60766e;font-size:11px}.value{font-weight:800;color:#172e28}.payment{margin-top:15px;border:1px solid var(--line);border-radius:12px;overflow:hidden}.paymentTitle{background:var(--green);color:#fff;padding:11px 14px;font-weight:900;display:flex;justify-content:space-between}.payment table{min-width:0;width:100%;box-shadow:none;border:0;border-radius:0}.payment th,.payment td{padding:10px 14px}.payment td:last-child,.payment th:last-child{text-align:right}.paidRow{background:#e7f4ea;font-weight:900}.balanceRow{background:#fff0df;color:var(--orange);font-size:16px;font-weight:900}.bottom{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:15px}.smallbox{border:1px solid var(--line);border-radius:12px;padding:13px 14px;min-height:85px}.smallbox h4{margin:0 0 8px;color:var(--green);font-size:14px}.signature{text-align:right;margin-top:22px}.sigline{display:inline-block;width:190px;border-bottom:1px solid #555;margin-bottom:5px}.footer{margin-top:20px;padding-top:14px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:end;color:var(--muted);font-size:11px}.footer b{color:var(--green);font-size:13px}
 @media(max-width:760px){.grid,.panels,.bottom{grid-template-columns:1fr}.invoiceTop{grid-template-columns:85px 1fr}.logo{width:78px;height:78px}.invoiceLabel{grid-column:1/-1;text-align:left}.company h1{font-size:21px}.invoice{padding:18px}}
-@media print{body{background:#fff}header,#login,#panel,.no-print{display:none!important}main{margin:0;padding:0;max-width:none}.invoice{display:block!important;border:0!important;box-shadow:none!important;max-width:100%;padding:12mm 10mm}.invoiceTop{break-inside:avoid}.panels,.payment,.bottom{break-inside:avoid}.paymentTitle{background:var(--green)!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.paidRow{background:#e7f4ea!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.balanceRow{background:#fff0df!important;color:var(--orange)!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+@page{size:A4 portrait;margin:0}
+@media print{
+html,body{width:210mm;height:297mm;background:#fff!important;margin:0!important;padding:0!important;overflow:hidden}
+header,#login,#panel,.no-print{display:none!important}
+main{margin:0!important;padding:0!important;max-width:none!important}
+.invoice{display:block!important;width:210mm!important;height:297mm!important;max-width:none!important;margin:0!important;padding:8mm 9mm!important;border:0!important;box-shadow:none!important;overflow:hidden!important;font-size:10px!important}
+.invoiceTop{grid-template-columns:82px 1fr 150px!important;gap:12px!important;padding-bottom:10px!important}
+.logo{width:72px!important;height:72px!important}
+.company h1{font-size:20px!important;margin-bottom:2px!important}
+.tag{font-size:11px!important}
+.contact{font-size:8.5px!important;line-height:1.45!important;margin-top:4px!important}
+.invoiceLabel{padding:9px 11px!important;border-radius:8px!important}
+.invoiceLabel strong{font-size:18px!important}
+.invoiceNo{font-size:10px!important;margin-top:4px!important}
+.invoiceDate{font-size:8.5px!important}
+.divider{margin:9px 0!important;font-size:8px!important;gap:8px!important}
+.panels{gap:9px!important}
+.panel{border-radius:8px!important}
+.panelTitle{padding:6px 9px!important;font-size:10px!important}
+.panelBody{padding:7px 9px!important;font-size:9px!important;line-height:1.35!important;min-height:72px!important}
+.label{font-size:8px!important}.value{font-size:9px!important}
+.payment{margin-top:9px!important;border-radius:8px!important}
+.paymentTitle{padding:7px 9px!important;font-size:9px!important}
+.payment th,.payment td{padding:5px 9px!important;font-size:8.5px!important}
+.balanceRow{font-size:10px!important}
+.bottom{gap:9px!important;margin-top:9px!important}
+.smallbox{padding:8px 9px!important;min-height:55px!important;font-size:8.5px!important}
+.smallbox h4{margin-bottom:4px!important;font-size:9px!important}
+.footer{margin-top:10px!important;padding-top:7px!important;font-size:8px!important}
+.footer b{font-size:9px!important}
+.signature{margin-top:10px!important}
+.sigline{width:130px!important}
+.invoiceTop,.panels,.payment,.bottom,.footer{break-inside:avoid!important;page-break-inside:avoid!important}
+.paymentTitle{background:var(--green)!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.paidRow{background:#e7f4ea!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.balanceRow{background:#fff0df!important;color:var(--orange)!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
 </style></head>
 <body><header>GARHWAL TOUR N ADVENTURE<small>Admin / Travel Agent</small></header><main>
 <div id="login" class="card"><h2>Admin Login</h2><p class="muted">Private management area.</p><input id="pw" type="password" autocomplete="current-password" placeholder="Admin password"><div class="actions"><button class="primary" id="loginBtn">Login</button><a class="ghost" href="/">Back to Booking</a></div><p id="msg" class="muted"></p></div>
