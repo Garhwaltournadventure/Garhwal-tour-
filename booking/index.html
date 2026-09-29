@@ -12,10 +12,10 @@
 <body>
 <header><div class="head"><div class="brand">GARHWAL TOUR N ADVENTURE<small>Booking & Billing</small></div><div class="muted" style="color:#b7ccc0;font-size:12px">Uttarakhand · MSME UDYAM-UK-11-0006387</div></div></header>
 <div class="wrap">
-<div class="tabs no-print"><button class="tab active" data-tab="booking">New Booking</button><button class="tab" data-tab="bookings">Bookings</button><button class="tab" data-tab="invoice">Invoice</button></div>
+<div class="tabs no-print"><button class="tab active" data-tab="booking">Booking Form</button></div>
 
 <section id="booking">
-<div class="notice"><b>GST:</b> 5% included in the customer price. Customer ID and phone are compulsory. Data is stored in this browser on this device.</div>
+<div class="notice"><b>Booking Form:</b> Please enter your details and trip/service requirements. Our team will confirm the booking with you.</div>
 <form id="form">
 <div class="grid">
 <div class="card"><h2>Company details</h2><div class="fields">
@@ -34,23 +34,18 @@
 <div><label>Driver name</label><input id="driver"></div><div><label>Driver phone</label><input id="driverPhone"></div>
 <div class="field full"><label>Tour / service details</label><textarea id="details" placeholder="Route, pickup, drop, ticket details, rafting slot, package details..."></textarea></div>
 </div></div>
-<div class="card"><h2>Billing & payment</h2><div class="fields">
-<div><label>Customer price (GST included) <span class="required">*</span></label><input id="price" type="number" min="0" step="0.01" required></div>
-<div><label>Advance</label><input id="advance" type="number" min="0" step="0.01" value="0"></div>
-<div><label>Received now</label><input id="received" type="number" min="0" step="0.01" value="0"></div>
-<div><label>Payment mode</label><select id="mode"><option>UPI</option><option>Cash</option></select></div>
-<div><label>Paid to</label><select id="paidto"><option>Owner</option><option>Driver</option></select></div>
-<div><label>Reference / note</label><input id="paymentNote"></div>
-</div><div class="actions"><button class="btn primary" type="submit">Save Booking & Create Invoice</button><button class="btn ghost" type="reset">Clear</button></div></div>
+<div class="card"><h2>Booking confirmation</h2><div class="fields">
+<div class="field full"><label>Additional note</label><textarea id="paymentNote" placeholder="Any special request or note"></textarea></div>
+</div><div class="actions"><button class="btn primary" type="submit">Submit Booking Request</button><button class="btn ghost" type="reset">Clear</button></div></div>
 </div></form>
 </section>
 
-<section id="bookings" class="hidden">
+<section id="bookings" class="hidden" aria-hidden="true" style="display:none">
 <div class="card"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap"><h2>Bookings</h2><div><input id="search" placeholder="Search name / phone / invoice" style="width:260px;max-width:100%"></div></div></div>
 <div class="tablewrap" style="margin-top:16px"><table><thead><tr><th>Invoice</th><th>Customer</th><th>Service</th><th>Date</th><th>Total</th><th>Balance</th><th>Actions</th></tr></thead><tbody id="rows"></tbody></table></div>
 </section>
 
-<section id="invoice" class="hidden"><div class="actions no-print"><button class="btn dark" onclick="window.print()">Print / Save PDF</button><button class="btn ghost" onclick="showTab('bookings')">Back to bookings</button></div><div id="invoiceBox" class="invoice"><p class="muted">Select an invoice from Bookings.</p></div></section>
+<section id="invoice" class="hidden" aria-hidden="true" style="display:none"><div class="actions no-print"><button class="btn dark" onclick="window.print()">Print / Save PDF</button><button class="btn ghost" onclick="showTab('bookings')">Back to bookings</button></div><div id="invoiceBox" class="invoice"><p class="muted">Select an invoice from Bookings.</p></div></section>
 </div>
 <script>
 const KEY='garhwal_booking_v3';let data=JSON.parse(localStorage.getItem(KEY)||'[]');let current=null;
@@ -60,9 +55,9 @@ function save(){localStorage.setItem(KEY,JSON.stringify(data));renderRows()}
 function showTab(tab){document.querySelectorAll('section[id]').forEach(s=>s.classList.add('hidden'));$(tab).classList.remove('hidden');document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));if(tab==='bookings')renderRows()}
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
 $('date').value=new Date().toISOString().slice(0,10);
-$('form').onsubmit=e=>{e.preventDefault();const price=+$('price').value,advance=+$('advance').value||0,received=+$('received').value||0;const paid=Math.min(price,advance+received),gst=price-price/1.05;
+$('form').onsubmit=e=>{e.preventDefault();const price=0,advance=0,received=0;const paid=0,gst=0;
 const rec={id:Date.now(),invoice:'GTA-'+new Date().getFullYear()+'-'+String(data.length+1).padStart(4,'0'),company:$('company').value,cphone:$('cphone').value,cemail:$('cemail').value,gstin:$('gstin').value,msme:$('msme').value,name:$('name').value,phone:$('phone').value,email:$('email').value,idtype:$('idtype').value,idno:$('idno').value,service:$('service').value,date:$('date').value,pax:$('pax').value,vehicle:$('vehicle').value,driver:$('driver').value,driverPhone:$('driverPhone').value,details:$('details').value,price,advance,received,paid,mode:$('mode').value,paidto:$('paidto').value,paymentNote:$('paymentNote').value,gst};
-data.unshift(rec);current=rec;save();renderInvoice(rec);showTab('invoice');e.target.reset();$('date').value=new Date().toISOString().slice(0,10);$('company').value=rec.company;$('cphone').value=rec.cphone;$('msme').value=rec.msme};
+data.unshift(rec);current=rec;save();alert('Booking request submitted successfully. Our team will contact you for confirmation.');e.target.reset();$('date').value=new Date().toISOString().slice(0,10);$('company').value=rec.company;$('cphone').value=rec.cphone;$('msme').value=rec.msme};
 function renderRows(){const q=($('search')?.value||'').toLowerCase();$('rows').innerHTML=data.filter(r=>[r.invoice,r.name,r.phone,r.service].join(' ').toLowerCase().includes(q)).map(r=>'<tr><td><b>'+r.invoice+'</b></td><td>'+r.name+'<br><small>'+r.phone+'</small></td><td><span class="pill">'+r.service+'</span></td><td>'+r.date+'</td><td>'+money(r.price)+'</td><td>'+money(r.price-r.paid)+'</td><td><button class="btn ghost" onclick="openInvoice('+r.id+')">View</button> <button class="btn danger" onclick="delRec('+r.id+')">Delete</button></td></tr>').join('')||'<tr><td colspan="7">No bookings found.</td></tr>'}
 $('search').oninput=renderRows;
 window.openInvoice=id=>{const r=data.find(x=>x.id===id);if(r){current=r;renderInvoice(r);showTab('invoice')}};
