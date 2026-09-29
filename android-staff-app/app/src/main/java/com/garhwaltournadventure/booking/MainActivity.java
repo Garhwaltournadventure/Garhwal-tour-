@@ -22,7 +22,7 @@ import com.google.firebase.messaging.FirebaseMessaging;
 
 public class MainActivity extends Activity {
     private static final String APP_URL = "https://garhwal-booking.pages.dev/staff.html";
-    private static final String CHANNEL_ID = "garhwal_bookings_v2";
+    private static final String CHANNEL_ID = "garhwal_bookings_v3";
     private WebView webView;
 
     @Override
