@@ -75,7 +75,7 @@ document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.datas
 if(tab==='admin'&&adminPassword) loadAdmin();
 }
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
-if(new URLSearchParams(location.search).get('admin')==='1'){const b=document.createElement('button');b.className='tab';b.dataset.tab='admin';b.textContent='Admin';b.onclick=()=>showTab('admin');document.querySelector('.tabs').appendChild(b);}
+if(new URLSearchParams(location.search).get('admin')==='1'){const b=document.createElement('button');b.className='tab';b.dataset.tab='admin';b.textContent='Admin';b.onclick=()=>showTab('admin');document.querySelector('.tabs').appendChild(b);showTab('admin');}
 $('date').value=new Date().toISOString().slice(0,10);
 
 $('form').onsubmit=async e=>{
