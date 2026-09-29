@@ -22,7 +22,7 @@ import com.google.firebase.messaging.FirebaseMessaging;
 
 public class MainActivity extends Activity {
     private static final String APP_URL = "https://garhwal-booking.pages.dev/staff.html";
-    private static final String CHANNEL_ID = "garhwal_bookings";
+    private static final String CHANNEL_ID = "garhwal_bookings_v2";
     private WebView webView;
 
     @Override
@@ -77,6 +77,9 @@ public class MainActivity extends Activity {
         if (Build.VERSION.SDK_INT >= 26) {
             NotificationChannel c = new NotificationChannel(CHANNEL_ID, "Booking Notifications", NotificationManager.IMPORTANCE_HIGH);
             c.setDescription("New Garhwal Tour N Adventure bookings");
+            c.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+            c.enableVibration(true);
+            c.setSound(android.provider.Settings.System.DEFAULT_NOTIFICATION_URI, new android.media.AudioAttributes.Builder().setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION).setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION).build());
             getSystemService(NotificationManager.class).createNotificationChannel(c);
         }
     }
@@ -91,6 +94,8 @@ public class MainActivity extends Activity {
                     .setContentText(body)
                     .setStyle(new NotificationCompat.BigTextStyle().bigText(body))
                     .setPriority(NotificationCompat.PRIORITY_HIGH)
+                    .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                    .setDefaults(NotificationCompat.DEFAULT_ALL)
                     .setAutoCancel(true)
                     .build();
                 if (Build.VERSION.SDK_INT < 33 || checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
