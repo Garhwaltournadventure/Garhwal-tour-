@@ -508,7 +508,7 @@ function TravelAIAssistant() {
         body:JSON.stringify({message:q})
       });
       const data=await r.json();
-      setMessages(m=>[...m,{role:'assistant',text:data.answer||data.error||(data.detail?('AI error: '+data.detail):'Sorry, I could not answer that right now.')}]);
+      setMessages(m=>[...m,{role:'assistant',text:data.answer||(data.detail?('AI error: '+data.detail):null)||data.error||'Sorry, I could not answer that right now.'}]);
     }catch{
       setMessages(m=>[...m,{role:'assistant',text:'The travel assistant is temporarily unavailable. Please use WhatsApp to speak with us directly.'}]);
     }finally{setLoading(false);}
