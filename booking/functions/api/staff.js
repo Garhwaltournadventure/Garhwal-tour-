@@ -15,6 +15,7 @@ async function setup(db){
  if(!names.has('email')) await db.prepare(`ALTER TABLE staff_users ADD COLUMN email TEXT`).run();
  if(!names.has('phone')) await db.prepare(`ALTER TABLE staff_users ADD COLUMN phone TEXT`).run();
  if(!names.has('permissions')) await db.prepare(`ALTER TABLE staff_users ADD COLUMN permissions TEXT NOT NULL DEFAULT '{}'`).run();
+ await db.prepare(`CREATE TABLE IF NOT EXISTS staff_registration_requests (id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT, phone TEXT, password_hash TEXT NOT NULL, designation TEXT NOT NULL DEFAULT 'Staff', status TEXT NOT NULL DEFAULT 'Pending', created_at TEXT NOT NULL)`).run();
  await db.prepare(`CREATE TABLE IF NOT EXISTS staff_sessions (token TEXT PRIMARY KEY, user_id TEXT NOT NULL, role TEXT NOT NULL, expires_at TEXT NOT NULL)`).run();
 }
 async function session(request,db){
@@ -26,6 +27,18 @@ async function session(request,db){
 export async function onRequest({request,env}){
  if(!env.DB)return json({error:'Database is not configured.'},503);
  const db=env.DB;await setup(db);const url=new URL(request.url),a=url.searchParams.get('action')||'';
+ if(request.method==='POST'&&a==='register-request'){
+  let b;try{b=await request.json()}catch{return json({error:'Invalid JSON'},400)}
+  const name=String(b.name||'').trim(),email=String(b.email||'').trim().toLowerCase(),phone=String(b.phone||'').replace(/\D/g,''),password=String(b.password||''),designation=String(b.designation||'Staff').trim()||'Staff';
+  if(!name||(!email&&!phone)||password.length<4)return json({error:'Name, email or phone, and a 4+ character password are required.'},400);
+  if(email){const x=await db.prepare('SELECT id FROM staff_users WHERE lower(email)=?').bind(email).first();if(x)return json({error:'Email already registered.'},409)}
+  if(phone){const x=await db.prepare('SELECT id FROM staff_users WHERE phone=?').bind(phone).first();if(x)return json({error:'Phone already registered.'},409)}
+  const pending=await db.prepare('SELECT id FROM staff_registration_requests WHERE (email=? AND email<>\'\') OR (phone=? AND phone<>\'\')').bind(email,phone).first();
+  if(pending)return json({error:'A registration request is already pending.'},409);
+  const ph=await hashPassword(password,email||phone);
+  await db.prepare('INSERT INTO staff_registration_requests(id,name,email,phone,password_hash,designation,status,created_at) VALUES(?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(),name,email,phone,ph,designation,'Pending',new Date().toISOString()).run();
+  return json({ok:true});
+ }
  if(request.method==='POST'&&a==='login'){
   let b;try{b=await request.json()}catch{return json({error:'Invalid JSON'},400)}
   const identifier=String(b.identifier||b.username||'').trim(),password=String(b.password||'');
