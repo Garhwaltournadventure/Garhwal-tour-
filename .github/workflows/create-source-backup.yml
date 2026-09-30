@@ -1,0 +1,20 @@
+name: Create Full Source Backup
+on:
+  push:
+    paths:
+      - '.github/workflows/create-source-backup.yml'
+permissions:
+  contents: read
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create backup archive
+        run: zip -r "Garhwal-Tour-N-Adventure-Full-Backup-${GITHUB_SHA}.zip" . -x ".git/*"
+      - name: Upload backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: Garhwal-Tour-N-Adventure-Full-Backup
+          path: "Garhwal-Tour-N-Adventure-Full-Backup-${GITHUB_SHA}.zip"
+          retention-days: 90
