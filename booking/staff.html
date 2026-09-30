@@ -35,7 +35,19 @@ async function pollNewBookings(){
    const x=await api('bookings');
    const list=x.bookings||[];
    notifyNewBookings(list);
-   bookings=list;render();
+   bookings=list;
+   // Preserve unsaved worker-creation fields while the 15s booking poll runs.
+   const draft={};
+   ['wu','wn','wp','wd','pa','pv','pg','pp'].forEach(id=>{
+     const el=$(id);
+     if(el) draft[id]=el.type==='checkbox'?el.checked:el.value;
+   });
+   render();
+   Object.keys(draft).forEach(id=>{
+     const el=$(id);
+     if(!el)return;
+     if(el.type==='checkbox')el.checked=draft[id]; else el.value=draft[id];
+   });
  }catch(e){}
 }
 
