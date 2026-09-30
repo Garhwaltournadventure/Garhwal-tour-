@@ -44,7 +44,7 @@ export async function onRequest({request,env}){
   const identifier=String(b.identifier||b.username||'').trim(),password=String(b.password||'');
   if(!identifier||!password)return json({error:'Email/phone and password are required.'},400);
   const normalized=identifier.toLowerCase();
-  const u=await db.prepare('SELECT * FROM staff_users WHERE active=1 AND (lower(username)=? OR lower(email)=? OR phone=?)').bind(normalized,normalized,identifier.replace(/\\D/g,'')).first();
+  const u=await db.prepare('SELECT * FROM staff_users WHERE active=1 AND (lower(username)=? OR lower(email)=? OR phone=?)').bind(normalized,normalized,identifier.replace(/\D/g,'')).first();
   if(!u)return json({error:'Invalid login'},401);
   const salts=[u.username,u.email,u.phone].filter(Boolean);let ok=false;for(const salt of salts){if((await hashPassword(password,salt))===u.password_hash){ok=true;break}}if(!ok)return json({error:'Invalid login'},401);
   const token=crypto.randomUUID()+crypto.randomUUID().replaceAll('-','');
