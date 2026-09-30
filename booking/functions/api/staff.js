@@ -8,12 +8,13 @@ async function hashPassword(password,salt){
 }
 function authAdmin(request,env){const p=env.ADMIN_PASSWORD||env['ADMIN-PASSWORD'];return !!p&&request.headers.get('x-admin-password')===p}
 async function setup(db){
- await db.prepare(`CREATE TABLE IF NOT EXISTS staff_users (id TEXT PRIMARY KEY, username TEXT NOT NULL UNIQUE, display_name TEXT NOT NULL, password_hash TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'worker', designation TEXT NOT NULL DEFAULT 'Staff', email TEXT, phone TEXT, permissions TEXT NOT NULL DEFAULT '{}', active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL)`).run();
+ await db.prepare(`CREATE TABLE IF NOT EXISTS staff_users (id TEXT PRIMARY KEY, username TEXT NOT NULL UNIQUE, display_name TEXT NOT NULL, password_hash TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'worker', designation TEXT NOT NULL DEFAULT 'Staff', email TEXT, phone TEXT, avatar_data TEXT, permissions TEXT NOT NULL DEFAULT '{}', active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL)`).run();
  const cols=await db.prepare(`PRAGMA table_info(staff_users)`).all();
  const names=new Set((cols.results||[]).map(x=>x.name));
  if(!names.has('designation')) await db.prepare(`ALTER TABLE staff_users ADD COLUMN designation TEXT NOT NULL DEFAULT 'Staff'`).run();
  if(!names.has('email')) await db.prepare(`ALTER TABLE staff_users ADD COLUMN email TEXT`).run();
  if(!names.has('phone')) await db.prepare(`ALTER TABLE staff_users ADD COLUMN phone TEXT`).run();
+ if(!names.has('avatar_data')) await db.prepare(`ALTER TABLE staff_users ADD COLUMN avatar_data TEXT`).run();
  if(!names.has('permissions')) await db.prepare(`ALTER TABLE staff_users ADD COLUMN permissions TEXT NOT NULL DEFAULT '{}'`).run();
  await db.prepare(`CREATE TABLE IF NOT EXISTS staff_registration_requests (id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT, phone TEXT, password_hash TEXT NOT NULL, designation TEXT NOT NULL DEFAULT 'Staff', status TEXT NOT NULL DEFAULT 'Pending', created_at TEXT NOT NULL)`).run();
  await db.prepare(`CREATE TABLE IF NOT EXISTS staff_password_resets (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, identifier TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'Pending', created_at TEXT NOT NULL)`).run();
@@ -21,7 +22,7 @@ async function setup(db){
 }
 async function session(request,db){
  const token=request.headers.get('x-staff-token');if(!token)return null;
- const u=await db.prepare('SELECT s.*,u.username,u.display_name,u.designation,u.permissions,u.active FROM staff_sessions s JOIN staff_users u ON u.id=s.user_id WHERE s.token=? AND s.expires_at>? AND u.active=1').bind(token,new Date().toISOString()).first();
+ const u=await db.prepare('SELECT s.*,u.username,u.display_name,u.designation,u.email,u.phone,u.avatar_data,u.permissions,u.active FROM staff_sessions s JOIN staff_users u ON u.id=s.user_id WHERE s.token=? AND s.expires_at>? AND u.active=1').bind(token,new Date().toISOString()).first();
  if(u){try{u.permissions=JSON.parse(u.permissions||'{}')}catch(e){u.permissions={}}}
  return u;
 }
@@ -86,7 +87,32 @@ export async function onRequest({request,env}){
   await db.prepare('INSERT INTO device_tokens(token,user_id,role,active,created_at,updated_at) VALUES(?,?,?,?,?,?) ON CONFLICT(token) DO UPDATE SET user_id=excluded.user_id,role=excluded.role,active=1,updated_at=excluded.updated_at').bind(t,s.user_id,s.role,1,now,now).run();
   return json({ok:true});
  }
- if(request.method==='GET'&&a==='me'){return s?json({user:{id:s.user_id,username:s.username,display_name:s.display_name,designation:s.designation||'Staff',permissions:s.role==='admin'?{all:true}:s.permissions||{},role:s.role}}):json({error:'Unauthorized'},401)}
+ if(request.method==='GET'&&a==='me'){return s?json({user:{id:s.user_id,username:s.username,display_name:s.display_name,designation:s.designation||'Staff',email:s.email||'',phone:s.phone||'',avatar_data:s.avatar_data||'',permissions:s.role==='admin'?{all:true}:s.permissions||{},role:s.role}}):json({error:'Unauthorized'},401)}
+ if(request.method==='POST'&&a==='profile'){
+  if(!s)return json({error:'Unauthorized'},401);
+  let b;try{b=await request.json()}catch{return json({error:'Invalid JSON'},400)}
+  const current=String(b.currentPassword||''),next=String(b.newPassword||''),avatar=typeof b.avatar_data==='string'?b.avatar_data:'';
+  const u=await db.prepare('SELECT * FROM staff_users WHERE id=? AND active=1').bind(s.user_id).first();
+  if(!u)return json({error:'Account not found.'},404);
+  if(avatar){
+   if(!avatar.startsWith('data:image/'))return json({error:'Invalid photo format.'},400);
+   if(avatar.length>700000)return json({error:'Photo is too large. Please choose a smaller image.'},400);
+   await db.prepare('UPDATE staff_users SET avatar_data=? WHERE id=?').bind(avatar,s.user_id).run();
+  }
+  if(next){
+   if(next.length<6)return json({error:'New password must be at least 6 characters.'},400);
+   if(!current)return json({error:'Enter your current password.'},400);
+   const salts=[u.username,u.email,u.phone].filter(Boolean);let ok=false,matchedSalt='';
+   for(const salt of salts){if((await hashPassword(current,salt))===u.password_hash){ok=true;matchedSalt=salt;break}}
+   if(!ok)return json({error:'Current password is incorrect.'},401);
+   const ph=await hashPassword(next,matchedSalt||u.username);
+   await db.prepare('UPDATE staff_users SET password_hash=? WHERE id=?').bind(ph,s.user_id).run();
+   await db.prepare('DELETE FROM staff_sessions WHERE user_id=? AND token<>?').bind(s.user_id,request.headers.get('x-staff-token')).run();
+  }
+  const updated=await db.prepare('SELECT username,display_name,designation,email,phone,avatar_data,permissions,role FROM staff_users WHERE id=?').bind(s.user_id).first();
+  let permissions={};try{permissions=JSON.parse(updated.permissions||'{}')}catch(e){}
+  return json({ok:true,user:{id:s.user_id,username:updated.username,display_name:updated.display_name,designation:updated.designation||'Staff',email:updated.email||'',phone:updated.phone||'',avatar_data:updated.avatar_data||'',permissions:updated.role==='admin'?{all:true}:permissions,role:updated.role}});
+ }
  if(request.method==='GET'&&a==='password-reset-requests'){
   if(!s||s.role!=='admin')return json({error:'Unauthorized'},401);
   const r=await db.prepare('SELECT r.id,r.identifier,r.created_at,u.display_name,u.email,u.phone,u.username FROM staff_password_resets r JOIN staff_users u ON u.id=r.user_id WHERE r.status=\'Pending\' ORDER BY r.created_at DESC').all();
