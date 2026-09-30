@@ -16,6 +16,7 @@ async function setup(db){
  if(!names.has('phone')) await db.prepare(`ALTER TABLE staff_users ADD COLUMN phone TEXT`).run();
  if(!names.has('permissions')) await db.prepare(`ALTER TABLE staff_users ADD COLUMN permissions TEXT NOT NULL DEFAULT '{}'`).run();
  await db.prepare(`CREATE TABLE IF NOT EXISTS staff_registration_requests (id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT, phone TEXT, password_hash TEXT NOT NULL, designation TEXT NOT NULL DEFAULT 'Staff', status TEXT NOT NULL DEFAULT 'Pending', created_at TEXT NOT NULL)`).run();
+ await db.prepare(`CREATE TABLE IF NOT EXISTS staff_password_resets (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, identifier TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'Pending', created_at TEXT NOT NULL)`).run();
  await db.prepare(`CREATE TABLE IF NOT EXISTS staff_sessions (token TEXT PRIMARY KEY, user_id TEXT NOT NULL, role TEXT NOT NULL, expires_at TEXT NOT NULL)`).run();
 }
 async function session(request,db){
@@ -37,6 +38,17 @@ export async function onRequest({request,env}){
   if(pending)return json({error:'A registration request is already pending.'},409);
   const ph=await hashPassword(password,email||phone);
   await db.prepare('INSERT INTO staff_registration_requests(id,name,email,phone,password_hash,designation,status,created_at) VALUES(?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(),name,email,phone,ph,designation,'Pending',new Date().toISOString()).run();
+  return json({ok:true});
+ }
+ if(request.method==='POST'&&a==='forgot-password'){
+  let b;try{b=await request.json()}catch{return json({error:'Invalid JSON'},400)}
+  const identifier=String(b.identifier||'').trim(),normalized=identifier.toLowerCase(),phone=identifier.replace(/\D/g,'');
+  if(!identifier)return json({error:'Email or phone is required.'},400);
+  const u=await db.prepare('SELECT id FROM staff_users WHERE active=1 AND (lower(username)=? OR lower(email)=? OR phone=?)').bind(normalized,normalized,phone).first();
+  if(!u)return json({error:'No active employee account found with that email or phone.'},404);
+  const pending=await db.prepare('SELECT id FROM staff_password_resets WHERE user_id=? AND status=\'Pending\'').bind(u.id).first();
+  if(pending)return json({ok:true});
+  await db.prepare('INSERT INTO staff_password_resets(id,user_id,identifier,status,created_at) VALUES(?,?,?,?,?)').bind(crypto.randomUUID(),u.id,identifier,'Pending',new Date().toISOString()).run();
   return json({ok:true});
  }
  if(request.method==='POST'&&a==='login'){
@@ -75,6 +87,26 @@ export async function onRequest({request,env}){
   return json({ok:true});
  }
  if(request.method==='GET'&&a==='me'){return s?json({user:{id:s.user_id,username:s.username,display_name:s.display_name,designation:s.designation||'Staff',permissions:s.role==='admin'?{all:true}:s.permissions||{},role:s.role}}):json({error:'Unauthorized'},401)}
+ if(request.method==='GET'&&a==='password-reset-requests'){
+  if(!s||s.role!=='admin')return json({error:'Unauthorized'},401);
+  const r=await db.prepare('SELECT r.id,r.identifier,r.created_at,u.display_name,u.email,u.phone,u.username FROM staff_password_resets r JOIN staff_users u ON u.id=r.user_id WHERE r.status=\'Pending\' ORDER BY r.created_at DESC').all();
+  return json({requests:r.results||[]});
+ }
+ if(request.method==='POST'&&a==='password-reset-action'){
+  if(!s||s.role!=='admin')return json({error:'Unauthorized'},401);
+  let b;try{b=await request.json()}catch{return json({error:'Invalid JSON'},400)}
+  const id=String(b.id||''),action=String(b.action||''),password=String(b.password||'');
+  if(!id||!['approve','deny'].includes(action))return json({error:'Invalid request.'},400);
+  const q=await db.prepare('SELECT * FROM staff_password_resets WHERE id=? AND status=\'Pending\'').bind(id).first();if(!q)return json({error:'Request not found or already processed.'},404);
+  if(action==='deny'){await db.prepare('UPDATE staff_password_resets SET status=\'Denied\' WHERE id=?').bind(id).run();return json({ok:true});}
+  if(password.length<4)return json({error:'Temporary password must be at least 4 characters.'},400);
+  const u=await db.prepare('SELECT * FROM staff_users WHERE id=?').bind(q.user_id).first();if(!u)return json({error:'Employee not found.'},404);
+  const salt=u.email||u.phone||u.username,ph=await hashPassword(password,salt);
+  await db.prepare('UPDATE staff_users SET password_hash=? WHERE id=?').bind(ph,u.id).run();
+  await db.prepare('DELETE FROM staff_sessions WHERE user_id=?').bind(u.id).run();
+  await db.prepare('UPDATE staff_password_resets SET status=\'Approved\' WHERE id=?').bind(id).run();
+  return json({ok:true});
+ }
  if(request.method==='GET'&&a==='registration-requests'){
   if(!s||s.role!=='admin')return json({error:'Unauthorized'},401);
   const r=await db.prepare('SELECT id,name,email,phone,designation,status,created_at FROM staff_registration_requests ORDER BY created_at DESC').all();
