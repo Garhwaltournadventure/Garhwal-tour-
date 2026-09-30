@@ -154,7 +154,7 @@ export async function onRequest({request,env}){
  }
  if(request.method==='DELETE'&&a==='users'){
   if(!s||s.role!=='admin')return json({error:'Unauthorized'},401);
-  const id=url.searchParams.get('id');if(!id)return json({error:'Missing user id'},400);
+  let body={};try{body=await request.json()}catch(e){} const id=String(url.searchParams.get('id')||body.id||'').trim();if(!id)return json({error:'Missing user id'},400);
   const target=await db.prepare('SELECT id,username FROM staff_users WHERE id=?').bind(id).first();
   if(!target||target.username==='admin')return json({error:'Cannot delete this user.'},400);
   await db.prepare('DELETE FROM staff_sessions WHERE user_id=?').bind(id).run();
