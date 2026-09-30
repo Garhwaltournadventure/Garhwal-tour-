@@ -8,10 +8,12 @@ async function hashPassword(password,salt){
 }
 function authAdmin(request,env){const p=env.ADMIN_PASSWORD||env['ADMIN-PASSWORD'];return !!p&&request.headers.get('x-admin-password')===p}
 async function setup(db){
- await db.prepare(`CREATE TABLE IF NOT EXISTS staff_users (id TEXT PRIMARY KEY, username TEXT NOT NULL UNIQUE, display_name TEXT NOT NULL, password_hash TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'worker', designation TEXT NOT NULL DEFAULT 'Staff', permissions TEXT NOT NULL DEFAULT '{}', active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL)`).run();
+ await db.prepare(`CREATE TABLE IF NOT EXISTS staff_users (id TEXT PRIMARY KEY, username TEXT NOT NULL UNIQUE, display_name TEXT NOT NULL, password_hash TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'worker', designation TEXT NOT NULL DEFAULT 'Staff', email TEXT, phone TEXT, permissions TEXT NOT NULL DEFAULT '{}', active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL)`).run();
  const cols=await db.prepare(`PRAGMA table_info(staff_users)`).all();
  const names=new Set((cols.results||[]).map(x=>x.name));
  if(!names.has('designation')) await db.prepare(`ALTER TABLE staff_users ADD COLUMN designation TEXT NOT NULL DEFAULT 'Staff'`).run();
+ if(!names.has('email')) await db.prepare(`ALTER TABLE staff_users ADD COLUMN email TEXT`).run();
+ if(!names.has('phone')) await db.prepare(`ALTER TABLE staff_users ADD COLUMN phone TEXT`).run();
  if(!names.has('permissions')) await db.prepare(`ALTER TABLE staff_users ADD COLUMN permissions TEXT NOT NULL DEFAULT '{}'`).run();
  await db.prepare(`CREATE TABLE IF NOT EXISTS staff_sessions (token TEXT PRIMARY KEY, user_id TEXT NOT NULL, role TEXT NOT NULL, expires_at TEXT NOT NULL)`).run();
 }
@@ -26,11 +28,12 @@ export async function onRequest({request,env}){
  const db=env.DB;await setup(db);const url=new URL(request.url),a=url.searchParams.get('action')||'';
  if(request.method==='POST'&&a==='login'){
   let b;try{b=await request.json()}catch{return json({error:'Invalid JSON'},400)}
-  const username=String(b.username||'').trim().toLowerCase(),password=String(b.password||'');
-  if(!username||!password)return json({error:'Username and password are required.'},400);
-  const u=await db.prepare('SELECT * FROM staff_users WHERE username=? AND active=1').bind(username).first();
+  const identifier=String(b.identifier||b.username||'').trim(),password=String(b.password||'');
+  if(!identifier||!password)return json({error:'Email/phone and password are required.'},400);
+  const normalized=identifier.toLowerCase();
+  const u=await db.prepare('SELECT * FROM staff_users WHERE active=1 AND (lower(username)=? OR lower(email)=? OR phone=?)').bind(normalized,normalized,identifier.replace(/\\D/g,'')).first();
   if(!u)return json({error:'Invalid login'},401);
-  const ok=(await hashPassword(password,username))===u.password_hash;if(!ok)return json({error:'Invalid login'},401);
+  const ok=(await hashPassword(password,u.username))===u.password_hash;if(!ok)return json({error:'Invalid login'},401);
   const token=crypto.randomUUID()+crypto.randomUUID().replaceAll('-','');
   const exp=new Date(Date.now()+7*86400000).toISOString();
   await db.prepare('INSERT INTO staff_sessions(token,user_id,role,expires_at) VALUES(?,?,?,?)').bind(token,u.id,u.role,exp).run();
@@ -66,11 +69,11 @@ export async function onRequest({request,env}){
  if(request.method==='POST'&&a==='users'){
   if(!s||s.role!=='admin')return json({error:'Unauthorized'},401);
   let b;try{b=await request.json()}catch{return json({error:'Invalid JSON'},400)}
-  const username=String(b.username||'').trim().toLowerCase(),display=String(b.display_name||'').trim(),password=String(b.password||''),designation=String(b.designation||'Staff').trim()||'Staff',permissions=b.permissions&&typeof b.permissions==='object'?b.permissions:{};
+  const username=String(b.username||'').trim().toLowerCase(),display=String(b.display_name||'').trim(),password=String(b.password||''),email=String(b.email||'').trim().toLowerCase(),phone=String(b.phone||'').replace(/\\D/g,''),designation=String(b.designation||'Staff').trim()||'Staff',permissions=b.permissions&&typeof b.permissions==='object'?b.permissions:{};
   if(!username||!display||password.length<4)return json({error:'Username, display name and a 4+ character password are required.'},400);
   if(username==='admin')return json({error:'Reserved username.'},400);
   const ph=await hashPassword(password,username);
-  try{await db.prepare('INSERT INTO staff_users(id,username,display_name,password_hash,role,designation,permissions,active,created_at) VALUES(?,?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(),username,display,ph,'worker',designation,JSON.stringify(permissions),1,new Date().toISOString()).run();return json({ok:true})}catch(e){const msg=String(e?.message||e||'');return json({error:msg.includes('UNIQUE')?'Username already exists.':'Could not create worker: '+msg},409)}
+  try{await db.prepare('INSERT INTO staff_users(id,username,display_name,password_hash,role,designation,permissions,active,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(),username,display,ph,'worker',designation,email||null,phone||null,JSON.stringify(permissions),1,new Date().toISOString()).run();return json({ok:true})}catch(e){const msg=String(e?.message||e||'');return json({error:msg.includes('UNIQUE')?'Username already exists.':'Could not create worker: '+msg},409)}
  }
  if(request.method==='PATCH'&&a==='users'){
   if(!s||s.role!=='admin')return json({error:'Unauthorized'},401);
