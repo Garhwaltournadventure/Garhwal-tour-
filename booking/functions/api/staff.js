@@ -76,9 +76,24 @@ export async function onRequest({request,env}){
   if(!s||s.role!=='admin')return json({error:'Unauthorized'},401);
   let b;try{b=await request.json()}catch{return json({error:'Invalid JSON'},400)}
   if(!b.id)return json({error:'Missing user id'},400);
-  if(b.permissions&&typeof b.permissions==='object'){await db.prepare('UPDATE staff_users SET active=?,designation=?,permissions=? WHERE id=? AND username<>?').bind(b.active?1:0,String(b.designation||'Staff'),JSON.stringify(b.permissions),b.id,'admin').run()}
-  else if(b.designation){await db.prepare('UPDATE staff_users SET active=?,designation=? WHERE id=? AND username<>?').bind(b.active?1:0,String(b.designation),b.id,'admin').run()}
-  else await db.prepare('UPDATE staff_users SET active=? WHERE id=? AND username<>?').bind(b.active?1:0,b.id,'admin').run();
+  const target=await db.prepare('SELECT id,username FROM staff_users WHERE id=?').bind(b.id).first();
+  if(!target||target.username==='admin')return json({error:'Cannot modify this user.'},400);
+  const sets=[],vals=[];
+  if(typeof b.active==='boolean'){sets.push('active=?');vals.push(b.active?1:0)}
+  if(typeof b.designation==='string'&&b.designation.trim()){sets.push('designation=?');vals.push(b.designation.trim())}
+  if(b.permissions&&typeof b.permissions==='object'){sets.push('permissions=?');vals.push(JSON.stringify(b.permissions))}
+  if(!sets.length)return json({error:'Nothing to update.'},400);
+  vals.push(b.id);await db.prepare('UPDATE staff_users SET '+sets.join(',')+' WHERE id=? AND username<>?').bind(...vals,'admin').run();
+  return json({ok:true});
+ }
+ if(request.method==='DELETE'&&a==='users'){
+  if(!s||s.role!=='admin')return json({error:'Unauthorized'},401);
+  const id=url.searchParams.get('id');if(!id)return json({error:'Missing user id'},400);
+  const target=await db.prepare('SELECT id,username FROM staff_users WHERE id=?').bind(id).first();
+  if(!target||target.username==='admin')return json({error:'Cannot delete this user.'},400);
+  await db.prepare('DELETE FROM staff_sessions WHERE user_id=?').bind(id).run();
+  await db.prepare('DELETE FROM device_tokens WHERE user_id=?').bind(id).run();
+  await db.prepare('DELETE FROM staff_users WHERE id=? AND username<>?').bind(id,'admin').run();
   return json({ok:true});
  }
  if(request.method==='GET'&&a==='bookings'){
