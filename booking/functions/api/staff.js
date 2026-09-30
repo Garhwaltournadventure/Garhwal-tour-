@@ -136,7 +136,7 @@ export async function onRequest({request,env}){
   if(!username||!display||password.length<4)return json({error:'Username, display name and a 4+ character password are required.'},400);
   if(username==='admin')return json({error:'Reserved username.'},400);
   const ph=await hashPassword(password,username);
-  try{await db.prepare('INSERT INTO staff_users(id,username,display_name,password_hash,role,designation,permissions,active,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(),username,display,ph,'worker',designation,email||null,phone||null,JSON.stringify(permissions),1,new Date().toISOString()).run();return json({ok:true})}catch(e){const msg=String(e?.message||e||'');return json({error:msg.includes('UNIQUE')?'Username already exists.':'Could not create worker: '+msg},409)}
+  try{await db.prepare('INSERT INTO staff_users(id,username,display_name,password_hash,role,designation,email,phone,permissions,active,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(),username,display,ph,'worker',designation,email||null,phone||null,JSON.stringify(permissions),1,new Date().toISOString()).run();return json({ok:true})}catch(e){const msg=String(e?.message||e||'');return json({error:msg.includes('UNIQUE')?'Username already exists.':'Could not create worker: '+msg},409)}
  }
  if(request.method==='PATCH'&&a==='users'){
   if(!s||s.role!=='admin')return json({error:'Unauthorized'},401);
