@@ -123,20 +123,21 @@ async function chooseProfilePhoto(file){
  }catch(e){uiAlert(e.message||'Could not update photo.');}
 }
 async function load(){
+ let me;
  try{
-  const me=await api('me');
-  user=me.user;
-  sessionStorage.setItem('gta_staff_user',JSON.stringify(user));
-  bookings=(await api('bookings')).bookings||[];
-  render();
-  if(user.role==='admin')loadUsers();
- }catch(e){forceLogout('Session expired. Please login again.');}
+  me=await api('me');
+ }catch(e){forceLogout('Session expired. Please login again.');return;}
+ user=me.user;
+ sessionStorage.setItem('gta_staff_user',JSON.stringify(user));
+ try{bookings=(await api('bookings')).bookings||[];}catch(e){bookings=[];}
+ render();
+ if(user.role==='admin')loadUsers();
 }
 async function loadUsers(){try{const r=await api('users');const list=(r.users||[]).filter(u=>u.username!=='admin');const count=$('workerCount');if(count)count.textContent=list.length+' Worker'+(list.length===1?'':'s');$('usersList').innerHTML=list.map(u=>{let p={};try{p=JSON.parse(u.permissions||'{}')}catch(e){}const n=String(u.display_name||'Worker').replace(/'/g,'\\&#39;');const d=String(u.designation||'Staff').replace(/'/g,'\\&#39;');const un=String(u.username||'').replace(/'/g,'\\&#39;');return '<div class="job" style="margin-top:9px;padding:13px"><div class="jobhead"><div><b>'+n+'</b><div class="muted">'+d+' · @'+un+'</div></div><span class="pill '+(u.active?'':'danger')+'">'+(u.active?'Active':'Disabled')+'</span></div><div class="muted" style="margin:6px 0 9px">'+(p.view_all?'All bookings':'Assigned bookings')+' · '+(p.guest_contact?'Guest contact':'No guest contact')+' · '+(p.payment_details?'Payment details':'No payment details')+'</div><div class="actions"><button class="btn ghost" style="padding:7px 10px" onclick="editUser(\''+u.id+'\',\''+n+'\',\''+d+'\','+(!!p.view_assigned)+','+(!!p.view_all)+','+(!!p.guest_contact)+','+(!!p.payment_details)+')">✏️ Edit</button><button class="btn danger" style="padding:7px 10px" onclick="deleteUser(\''+u.id+'\',\''+n+'\')">🗑 Delete</button></div></div>'}).join('')||'<p class="muted">No workers added yet.</p>'}catch(e){$('usersList').textContent='Could not load workers.'}}
 async function editUser(id,name,designation,assigned,all,contact,payment){const d=await uiPrompt('Designation:',designation,'Edit Worker');if(d===null)return;const a=await uiConfirm('Allow assigned bookings?','Assigned bookings');const v=await uiConfirm('Allow all bookings?','All bookings');const g=await uiConfirm('Allow guest contact and WhatsApp?','Guest contact');const p=await uiConfirm('Allow payment details?','Payment details');if(!a&&!v)return uiAlert('Worker must have at least one booking access permission.');try{await api('users',{method:'PATCH',body:JSON.stringify({id,designation:d.trim()||'Staff',permissions:{view_assigned:a,view_all:v,guest_contact:g,payment_details:p}})});await loadUsers();uiAlert('Worker permissions updated.')}catch(e){uiAlert(e.message||'Could not update worker.')}}
-async function deleteUser(id,name){if(!uiConfirm('Delete worker '+name+'? This cannot be undone.'))return;try{await api('users',{method:'DELETE',body:JSON.stringify({id})});await loadUsers();uiAlert('Worker deleted.')}catch(e){uiAlert(e.message||'Could not delete worker.')}}
+async function deleteUser(id,name){if(!(await uiConfirm('Delete worker '+name+'? This cannot be undone.')))return;try{await api('users',{method:'DELETE',body:JSON.stringify({id})});await loadUsers();uiAlert('Worker deleted.')}catch(e){uiAlert(e.message||'Could not delete worker.')}}
 async function loadRegistrationRequests(){try{const r=await api('registration-requests');const el=$('registrationList');if(!el)return;el.innerHTML=(r.requests||[]).filter(x=>x.status==='Pending').map(x=>'<div class="requestCard"><div><b>'+x.name+'</b><div class="muted">'+(x.designation||'Staff')+' · '+(x.email||x.phone||'No contact')+'</div></div><div class="actions"><button class="btn primary" onclick="registrationAction(\''+x.id+'\',\'approve\')">Approve</button><button class="btn ghost" onclick="registrationAction(\''+x.id+'\',\'deny\')">Deny</button></div></div>').join('')||'<p class="muted">No pending registration requests.</p>'}catch(e){const el=$('registrationList');if(el)el.textContent='Could not load registration requests.'}}
-async function registrationAction(id,action){if(!uiConfirm(action==='approve'?'Approve this employee registration?':'Deny this employee registration?'))return;try{await api('registration-action',{method:'POST',body:JSON.stringify({id,action})});await loadRegistrationRequests();uiAlert(action==='approve'?'Employee approved. They can now log in.':'Registration denied.')}catch(e){uiAlert(e.message||'Could not process request.')}}
+async function registrationAction(id,action){if(!(await uiConfirm(action==='approve'?'Approve this employee registration?':'Deny this employee registration?')))return;try{await api('registration-action',{method:'POST',body:JSON.stringify({id,action})});await loadRegistrationRequests();uiAlert(action==='approve'?'Employee approved. They can now log in.':'Registration denied.')}catch(e){uiAlert(e.message||'Could not process request.')}}
 function openAdminTool(name){document.getElementById('workersTool').classList.add('hidden');document.getElementById('requestsTool').classList.add('hidden');if(name==='requests'){document.getElementById('requestsTool').classList.remove('hidden');loadRegistrationRequests();document.getElementById('requestsTool').scrollIntoView({behavior:'smooth'});}if(name==='workers'){document.getElementById('workersTool').classList.remove('hidden');loadUsers();document.getElementById('workersTool').scrollIntoView({behavior:'smooth'});}}
 function closeAdminTool(){document.getElementById('workersTool').classList.add('hidden');}
 function showCreateWorker(){document.getElementById('createWorkerBox').classList.toggle('hidden');}
@@ -211,5 +212,5 @@ h+='<div class="card"><button class="btn ghost" style="width:100%" onclick="forc
   await showApp();
  }catch(e){forceLogout();}
 })();
-if('serviceWorker' in navigator)navigator.serviceWorker.register('/staff-sw.js');
+if('serviceWorker' in navigator)navigator.serviceWorker.register('/booking/staff-sw.js').catch(()=>{});
 </script></body></html>
