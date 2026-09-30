@@ -75,6 +75,24 @@ export async function onRequest({request,env}){
   return json({ok:true});
  }
  if(request.method==='GET'&&a==='me'){return s?json({user:{id:s.user_id,username:s.username,display_name:s.display_name,designation:s.designation||'Staff',permissions:s.role==='admin'?{all:true}:s.permissions||{},role:s.role}}):json({error:'Unauthorized'},401)}
+ if(request.method==='GET'&&a==='registration-requests'){
+  if(!s||s.role!=='admin')return json({error:'Unauthorized'},401);
+  const r=await db.prepare('SELECT id,name,email,phone,designation,status,created_at FROM staff_registration_requests ORDER BY created_at DESC').all();
+  return json({requests:r.results||[]});
+ }
+ if(request.method==='POST'&&a==='registration-action'){
+  if(!s||s.role!=='admin')return json({error:'Unauthorized'},401);
+  let b;try{b=await request.json()}catch{return json({error:'Invalid JSON'},400)}
+  const id=String(b.id||''),action=String(b.action||'').toLowerCase();if(!id||!['approve','deny'].includes(action))return json({error:'Invalid request.'},400);
+  const q=await db.prepare('SELECT * FROM staff_registration_requests WHERE id=? AND status=\'Pending\'').bind(id).first();if(!q)return json({error:'Request not found or already processed.'},404);
+  if(action==='deny'){await db.prepare('UPDATE staff_registration_requests SET status=\'Denied\' WHERE id=?').bind(id).run();return json({ok:true});}
+  const username='staff_'+id.replace(/-/g,'').slice(0,12);
+  const exists=await db.prepare('SELECT id FROM staff_users WHERE username=?').bind(username).first();if(exists)return json({error:'Could not create account.'},409);
+  const ph=await hashPassword(String(q.password_hash||''),username);
+  await db.prepare('INSERT INTO staff_users(id,username,display_name,password_hash,role,designation,email,phone,permissions,active,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(),username,q.name,ph,'worker',q.designation||'Staff',q.email||null,q.phone||null,'{"view_assigned":true,"view_all":false,"guest_contact":true,"payment_details":false}',1,new Date().toISOString()).run();
+  await db.prepare('UPDATE staff_registration_requests SET status=\'Approved\' WHERE id=?').bind(id).run();
+  return json({ok:true});
+ }
  if(request.method==='GET'&&a==='users'){
   if(!s||s.role!=='admin')return json({error:'Unauthorized'},401);
   const r=await db.prepare('SELECT id,username,display_name,role,designation,permissions,active,created_at FROM staff_users ORDER BY display_name').all();return json({users:r.results||[]});
