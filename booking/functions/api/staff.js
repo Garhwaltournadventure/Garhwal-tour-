@@ -46,7 +46,7 @@ export async function onRequest({request,env}){
   const normalized=identifier.toLowerCase();
   const u=await db.prepare('SELECT * FROM staff_users WHERE active=1 AND (lower(username)=? OR lower(email)=? OR phone=?)').bind(normalized,normalized,identifier.replace(/\\D/g,'')).first();
   if(!u)return json({error:'Invalid login'},401);
-  const ok=(await hashPassword(password,u.username))===u.password_hash;if(!ok)return json({error:'Invalid login'},401);
+  const salts=[u.username,u.email,u.phone].filter(Boolean);let ok=false;for(const salt of salts){if((await hashPassword(password,salt))===u.password_hash){ok=true;break}}if(!ok)return json({error:'Invalid login'},401);
   const token=crypto.randomUUID()+crypto.randomUUID().replaceAll('-','');
   const exp=new Date(Date.now()+7*86400000).toISOString();
   await db.prepare('INSERT INTO staff_sessions(token,user_id,role,expires_at) VALUES(?,?,?,?)').bind(token,u.id,u.role,exp).run();
@@ -88,7 +88,7 @@ export async function onRequest({request,env}){
   if(action==='deny'){await db.prepare('UPDATE staff_registration_requests SET status=\'Denied\' WHERE id=?').bind(id).run();return json({ok:true});}
   const username='staff_'+id.replace(/-/g,'').slice(0,12);
   const exists=await db.prepare('SELECT id FROM staff_users WHERE username=?').bind(username).first();if(exists)return json({error:'Could not create account.'},409);
-  const ph=await hashPassword(String(q.password_hash||''),username);
+  const ph=String(q.password_hash||'');
   await db.prepare('INSERT INTO staff_users(id,username,display_name,password_hash,role,designation,email,phone,permissions,active,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(),username,q.name,ph,'worker',q.designation||'Staff',q.email||null,q.phone||null,'{"view_assigned":true,"view_all":false,"guest_contact":true,"payment_details":false}',1,new Date().toISOString()).run();
   await db.prepare('UPDATE staff_registration_requests SET status=\'Approved\' WHERE id=?').bind(id).run();
   return json({ok:true});
