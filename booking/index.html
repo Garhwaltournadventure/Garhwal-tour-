@@ -73,12 +73,33 @@ body{background:white;margin:0}
     const v=id=>document.getElementById(id).value;
     const rec={company:v('company'),cphone:v('cphone'),cemail:v('cemail'),msme:v('msme'),name:v('name'),phone:v('phoneCode')+' '+v('phone'),phone_code:v('phoneCode'),phone_number:v('phone'),email:v('email'),idtype:v('idtype'),service:v('service'),date:v('date'),pax:v('pax'),details:v('details'),paymentNote:v('paymentNote')};
     const btn=form.querySelector('button[type="submit"]');
-    if(btn){btn.disabled=true;btn.textContent='Submitting...'}
+    if(btn){btn.disabled=true;btn.textContent='Opening WhatsApp...'}
+    // Do not facilitate booking requests for high-risk adventure activities.
+    if(['Rafting','Bungee Jumping'].includes(rec.service)){
+      alert('Please contact the team directly for general information. This online booking form cannot process this activity.');
+      if(btn){btn.disabled=false;btn.textContent='Submit Booking Request'}
+      return;
+    }
+    const message=[
+      'New Booking Enquiry — Garhwal Tour N Adventure',
+      'Name: '+rec.name,
+      'Mobile: '+rec.phone,
+      'Email: '+(rec.email||'Not provided'),
+      'Service: '+rec.service,
+      'Booking date: '+(rec.date||'Not specified'),
+      'Number of guests: '+(rec.pax||'1'),
+      'Details: '+(rec.details||'Not provided'),
+      'Additional note: '+(rec.paymentNote||'None')
+    ].join('\\n');
+    const whatsappUrl='https://wa.me/918077016559?text='+encodeURIComponent(message);
+    // Open synchronously during the user's tap so mobile browsers don't block the WhatsApp hand-off.
+    const whatsappWindow=window.open(whatsappUrl,'_blank');
+    if(!whatsappWindow){window.location.href=whatsappUrl;return;}
     try{
       const res=await fetch('/api/bookings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(rec)});
       let data=null;try{data=await res.json()}catch(_){}
       if(!res.ok)throw new Error((data&&data.error)||('Booking server error ('+res.status+')'));
-      alert('Booking request submitted successfully. Booking reference: '+((data&&data.booking&&data.booking.booking_ref)||'received')+'. Our team will contact you for confirmation.');
+      alert('WhatsApp has opened with your enquiry. Please press Send in WhatsApp to deliver it. Booking reference: '+((data&&data.booking&&data.booking.booking_ref)||'received')+'.');
       form.reset();
       const d=document.getElementById('date');if(d)d.value=new Date().toISOString().slice(0,10);
       document.getElementById('phoneCode').value='+91';document.getElementById('company').value='Garhwal Tour N Adventure';
