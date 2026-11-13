@@ -1,6 +1,16 @@
 const ALLOWED_ORIGIN='https://garhwal-tour.pages.dev';
 const MODEL='@cf/google/gemma-4-26b-a4b-it';
 
+async function rateLimit(db,request,scope,limit,windowMs){
+ const ip=request.headers.get('CF-Connecting-IP')||request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()||'unknown';
+ const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(scope+'|'+ip));
+ const key=[...new Uint8Array(digest)].map(x=>x.toString(16).padStart(2,'0')).join('');
+ const now=Date.now(),start=Math.floor(now/windowMs)*windowMs,expires=start+windowMs;
+ await db.prepare('CREATE TABLE IF NOT EXISTS api_rate_limits (key TEXT PRIMARY KEY, window_start INTEGER NOT NULL, count INTEGER NOT NULL, expires_at INTEGER NOT NULL)').run();
+ const result=await db.prepare('INSERT INTO api_rate_limits(key,window_start,count,expires_at) VALUES(?,?,1,?) ON CONFLICT(key) DO UPDATE SET count=CASE WHEN api_rate_limits.window_start=excluded.window_start THEN api_rate_limits.count+1 ELSE 1 END,window_start=excluded.window_start,expires_at=excluded.expires_at RETURNING count').bind(key,start,expires).first();
+ if(Math.random()<0.02) await db.prepare('DELETE FROM api_rate_limits WHERE expires_at<?').bind(now).run();
+ return Number(result?.count||0)<=limit;
+}
 function cors(body,status=200){
   return new Response(JSON.stringify(body),{status,headers:{
     'content-type':'application/json; charset=utf-8',
@@ -116,6 +126,8 @@ export async function onRequest(context){
 
   if(request.method!=='POST') return cors({error:'Method not allowed'},405);
   if(!env.AI) return cors({error:'AI service is not configured yet. Add a Workers AI binding named AI to this Pages project.'},503);
+  if(!env.DB) return cors({error:'AI protection is not configured. Please contact the site administrator.'},503);
+  try{if(!await rateLimit(env.DB,request,'travel-ai',10,60*1000))return cors({error:'Too many AI questions. Please wait a minute and try again.'},429)}catch{return cors({error:'AI protection is temporarily unavailable. Please try again later.'},503)}
 
   let body;
   try{ body=await request.json(); }catch{return cors({error:'Invalid request.'},400)}
