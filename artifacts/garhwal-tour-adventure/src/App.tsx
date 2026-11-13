@@ -355,9 +355,15 @@ function getCopy(language: LanguageCode): Copy {
 }
 
 const openWhatsApp = (message: string) => {
-  const whatsappWindow = window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, '_blank');
-  if (whatsappWindow) whatsappWindow.opener = null;
-  return Boolean(whatsappWindow);
+  const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+  const whatsappWindow = window.open(url, '_blank');
+  if (whatsappWindow) {
+    whatsappWindow.opener = null;
+    return true;
+  }
+  // If the browser blocks a new tab, continue in the current tab instead.
+  window.location.assign(url);
+  return true;
 };
 
 const services = [
