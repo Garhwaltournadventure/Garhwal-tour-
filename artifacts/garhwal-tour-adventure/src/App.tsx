@@ -26,7 +26,7 @@ import NotFound from '@/pages/not-found';
 import { Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 
 const WHATSAPP_NUMBER = '918077016559';
-const GOOGLE_REVIEWS_URL = 'https://maps.app.goo.gl/JuhvMkETd4GjBYkY7?g_st=ac';
+const GOOGLE_REVIEWS_URL = 'https://g.page/r/CdG3xVpgrjotEBE/review';
 
 type TravelData = { route?: { origin:string; destination:string; distanceKm:number; durationMinutes:number; durationText:string; routeSummary:string; mapsUrl:string } | null; weather?: { place:string; temperature:number; feelsLike:number; precipitation:number; wind:number; condition:string; time:string; timezone:string } | null };
 
