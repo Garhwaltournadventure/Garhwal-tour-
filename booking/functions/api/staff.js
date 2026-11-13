@@ -194,9 +194,15 @@ export async function onRequest({request,env}){
    const r=await db.prepare('SELECT * FROM bookings ORDER BY created_at DESC').all();return json({bookings:r.results||[]});
   }
   let perms={};try{perms=typeof s.permissions==='string'?JSON.parse(s.permissions||'{}'):(s.permissions||{})}catch(e){}
-  if(perms.view_all){const r=await db.prepare('SELECT * FROM bookings ORDER BY created_at DESC').all();return json({bookings:r.results||[]})}
-  if(perms.view_assigned===false)return json({bookings:[]});
-  const r=await db.prepare('SELECT * FROM bookings WHERE driver=? ORDER BY date,created_at DESC').bind(s.display_name).all();return json({bookings:r.results||[]});
+  if(perms.view_assigned===false&&!perms.view_all)return json({bookings:[]});
+  const columns=['id','booking_ref','created_at','name','service','date','pax','details','payment_note','status','vehicle','driver'];
+  if(perms.guest_contact){columns.push('phone','email')}
+  if(perms.payment_details){columns.push('price','advance','received','paid','gst','mode','paidto')}
+  const select='SELECT '+columns.join(',')+' FROM bookings';
+  const result=perms.view_all
+   ? await db.prepare(select+' ORDER BY created_at DESC').all()
+   : await db.prepare(select+' WHERE driver=? ORDER BY date,created_at DESC').bind(s.display_name).all();
+  return json({bookings:result.results||[]});
  }
  return json({error:'Not found'},404);
 }
