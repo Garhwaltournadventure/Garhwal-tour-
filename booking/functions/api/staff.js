@@ -6,8 +6,19 @@ async function hashPassword(password,salt){
  const bits=await crypto.subtle.deriveBits({name:'PBKDF2',salt:enc.encode(salt),iterations:100000,hash:'SHA-256'},key,256);
  return hex(bits);
 }
+async function rateLimit(db,request,scope,limit,windowMs){
+ const ip=request.headers.get('CF-Connecting-IP')||request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()||'unknown';
+ const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(scope+'|'+ip));
+ const key=[...new Uint8Array(digest)].map(x=>x.toString(16).padStart(2,'0')).join('');
+ const now=Date.now(),start=Math.floor(now/windowMs)*windowMs,expires=start+windowMs;
+ await db.prepare('CREATE TABLE IF NOT EXISTS api_rate_limits (key TEXT PRIMARY KEY, window_start INTEGER NOT NULL, count INTEGER NOT NULL, expires_at INTEGER NOT NULL)').run();
+ const result=await db.prepare('INSERT INTO api_rate_limits(key,window_start,count,expires_at) VALUES(?,?,1,?) ON CONFLICT(key) DO UPDATE SET count=CASE WHEN api_rate_limits.window_start=excluded.window_start THEN api_rate_limits.count+1 ELSE 1 END,window_start=excluded.window_start,expires_at=excluded.expires_at RETURNING count').bind(key,start,expires).first();
+ if(Math.random()<0.02) await db.prepare('DELETE FROM api_rate_limits WHERE expires_at<?').bind(now).run();
+ return Number(result?.count||0)<=limit;
+}
 function authAdmin(request,env){const p=env.ADMIN_PASSWORD||env['ADMIN-PASSWORD'];return !!p&&request.headers.get('x-admin-password')===p}
 async function setup(db){
+ await db.prepare('CREATE TABLE IF NOT EXISTS api_rate_limits (key TEXT PRIMARY KEY, window_start INTEGER NOT NULL, count INTEGER NOT NULL, expires_at INTEGER NOT NULL)').run();
  await db.prepare(`CREATE TABLE IF NOT EXISTS staff_users (id TEXT PRIMARY KEY, username TEXT NOT NULL UNIQUE, display_name TEXT NOT NULL, password_hash TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'worker', designation TEXT NOT NULL DEFAULT 'Staff', email TEXT, phone TEXT, avatar_data TEXT, permissions TEXT NOT NULL DEFAULT '{}', active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL)`).run();
  const cols=await db.prepare(`PRAGMA table_info(staff_users)`).all();
  const names=new Set((cols.results||[]).map(x=>x.name));
@@ -29,10 +40,14 @@ async function session(request,db){
 export async function onRequest({request,env}){
  if(!env.DB)return json({error:'Database is not configured.'},503);
  const db=env.DB;await setup(db);const url=new URL(request.url),a=url.searchParams.get('action')||'';
+ if(request.method==='POST'&&['login','admin-login','register-request','forgot-password'].includes(a)){
+  const policy=a==='login'?[8,15*60*1000]:a==='admin-login'?[6,15*60*1000]:[3,60*60*1000];
+  if(!await rateLimit(db,request,'staff-'+a,policy[0],policy[1]))return json({error:'Too many attempts. Please wait and try again later.'},429);
+ }
  if(request.method==='POST'&&a==='register-request'){
   let b;try{b=await request.json()}catch{return json({error:'Invalid JSON'},400)}
   const name=String(b.name||'').trim(),email=String(b.email||'').trim().toLowerCase(),phone=String(b.phone||'').replace(/\D/g,''),password=String(b.password||''),designation=String(b.designation||'Staff').trim()||'Staff';
-  if(!name||(!email&&!phone)||password.length<4)return json({error:'Name, email or phone, and a 4+ character password are required.'},400);
+  if(!name||(!email&&!phone)||password.length<8)return json({error:'Name, email or phone, and a password of at least 8 characters are required.'},400);
   if(email){const x=await db.prepare('SELECT id FROM staff_users WHERE lower(email)=?').bind(email).first();if(x)return json({error:'Email already registered.'},409)}
   if(phone){const x=await db.prepare('SELECT id FROM staff_users WHERE phone=?').bind(phone).first();if(x)return json({error:'Phone already registered.'},409)}
   const pending=await db.prepare('SELECT id FROM staff_registration_requests WHERE (email=? AND email<>\'\') OR (phone=? AND phone<>\'\')').bind(email,phone).first();
@@ -125,7 +140,7 @@ export async function onRequest({request,env}){
   if(!id||!['approve','deny'].includes(action))return json({error:'Invalid request.'},400);
   const q=await db.prepare('SELECT * FROM staff_password_resets WHERE id=? AND status=\'Pending\'').bind(id).first();if(!q)return json({error:'Request not found or already processed.'},404);
   if(action==='deny'){await db.prepare('UPDATE staff_password_resets SET status=\'Denied\' WHERE id=?').bind(id).run();return json({ok:true});}
-  if(password.length<4)return json({error:'Temporary password must be at least 4 characters.'},400);
+  if(password.length<8)return json({error:'Temporary password must be at least 8 characters.'},400);
   const u=await db.prepare('SELECT * FROM staff_users WHERE id=?').bind(q.user_id).first();if(!u)return json({error:'Employee not found.'},404);
   const salt=u.email||u.phone||u.username,ph=await hashPassword(password,salt);
   await db.prepare('UPDATE staff_users SET password_hash=? WHERE id=?').bind(ph,u.id).run();
@@ -159,7 +174,7 @@ export async function onRequest({request,env}){
   if(!s||s.role!=='admin')return json({error:'Unauthorized'},401);
   let b;try{b=await request.json()}catch{return json({error:'Invalid JSON'},400)}
   const username=String(b.username||'').trim().toLowerCase(),display=String(b.display_name||'').trim(),password=String(b.password||''),email=String(b.email||'').trim().toLowerCase(),phone=String(b.phone||'').replace(/\\D/g,''),designation=String(b.designation||'Staff').trim()||'Staff',permissions=b.permissions&&typeof b.permissions==='object'?b.permissions:{};
-  if(!username||!display||password.length<4)return json({error:'Username, display name and a 4+ character password are required.'},400);
+  if(!username||!display||password.length<8)return json({error:'Username, display name and a password of at least 8 characters are required.'},400);
   if(username==='admin')return json({error:'Reserved username.'},400);
   const ph=await hashPassword(password,username);
   try{await db.prepare('INSERT INTO staff_users(id,username,display_name,password_hash,role,designation,email,phone,permissions,active,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(),username,display,ph,'worker',designation,email||null,phone||null,JSON.stringify(permissions),1,new Date().toISOString()).run();return json({ok:true})}catch(e){const msg=String(e?.message||e||'');return json({error:msg.includes('UNIQUE')?'Username already exists.':'Could not create worker: '+msg},409)}
