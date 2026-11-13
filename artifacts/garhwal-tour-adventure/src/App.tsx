@@ -355,7 +355,9 @@ function getCopy(language: LanguageCode): Copy {
 }
 
 const openWhatsApp = (message: string) => {
-  window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+  const whatsappWindow = window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, '_blank');
+  if (whatsappWindow) whatsappWindow.opener = null;
+  return Boolean(whatsappWindow);
 };
 
 const services = [
@@ -445,8 +447,12 @@ function Home() {
     const group = String(form.get('group') || 'Group size to be decided');
     const interest = String(form.get('interest') || 'A Uttarakhand trip');
     const note = String(form.get('note') || 'I would love your suggestions.');
-    openWhatsApp(`Namaste Mangal, I am ${name}. I am enquiring about ${interest} in Uttarakhand. Dates: ${dates}. Group: ${group}. A little about the trip: ${note}`);
-    setSent(true);
+    const whatsappOpened = openWhatsApp(`Namaste Mangal, I am ${name}. I am enquiring about ${interest} in Uttarakhand. Dates: ${dates}. Group: ${group}. A little about the trip: ${note}`);
+    if (whatsappOpened) {
+      setSent(true);
+    } else {
+      window.alert('WhatsApp could not be opened. Please allow pop-ups or use the direct WhatsApp contact link.');
+    }
   };
 
   const closeMenu = () => setMenuOpen(false);
