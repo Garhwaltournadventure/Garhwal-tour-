@@ -1,4 +1,14 @@
 function json(data,status=200){return new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json'}})}
+async function rateLimit(db,request,scope,limit,windowMs){
+ const ip=request.headers.get('CF-Connecting-IP')||request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()||'unknown';
+ const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(scope+'|'+ip));
+ const key=[...new Uint8Array(digest)].map(x=>x.toString(16).padStart(2,'0')).join('');
+ const now=Date.now(),start=Math.floor(now/windowMs)*windowMs,expires=start+windowMs;
+ await db.prepare('CREATE TABLE IF NOT EXISTS api_rate_limits (key TEXT PRIMARY KEY, window_start INTEGER NOT NULL, count INTEGER NOT NULL, expires_at INTEGER NOT NULL)').run();
+ const result=await db.prepare('INSERT INTO api_rate_limits(key,window_start,count,expires_at) VALUES(?,?,1,?) ON CONFLICT(key) DO UPDATE SET count=CASE WHEN api_rate_limits.window_start=excluded.window_start THEN api_rate_limits.count+1 ELSE 1 END,window_start=excluded.window_start,expires_at=excluded.expires_at RETURNING count').bind(key,start,expires).first();
+ if(Math.random()<0.02) await db.prepare('DELETE FROM api_rate_limits WHERE expires_at<?').bind(now).run();
+ return Number(result?.count||0)<=limit;
+}
 function auth(request,env){
  const configuredPassword=String(env.ADMIN_PASSWORD||env["ADMIN-PASSWORD"]||"").trim();
  const suppliedPassword=String(request.headers.get('x-admin-password')||"").trim();
