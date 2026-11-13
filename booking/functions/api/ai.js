@@ -126,14 +126,26 @@ export async function onRequest(context){
   let liveRoute=null;
   let liveWeather=null;
   const route=extractRoute(message);
+  const weatherRequested=wantsWeather(message);
+  const weatherPlace=route?.destination||message
+    .replace(/.*?(?:weather|temperature|forecast|rain|rainfall|snow|mausam|मौसम|तापमान|बारिश|बर्फ)\\s*(?:in|at|for|of|का|में|की|like)?\\s*/i,'')
+    .replace(/[?!.]+$/,'').trim();
+
+  if(weatherRequested&&!weatherPlace){
+    return cors({answer:'Which location should I check the current weather for?',travel_data:{route:null,weather:null}});
+  }
 
   try{
     if(route) liveRoute=await getRoute(route.origin,route.destination);
-    if(wantsWeather(message)){
-      const weatherPlace=route?.destination||message.replace(/.*?(?:weather|temperature|forecast|rain|rainfall|snow|mausam|मौसम|तापमान|बारिश|बर्फ)\s*(?:in|at|for|of|का|में|की)?\s*/i,'').trim()||'Dehradun';
-      liveWeather=await getWeather(weatherPlace);
-    }
+    if(weatherRequested) liveWeather=await getWeather(weatherPlace);
   }catch{}
+
+  if(weatherRequested&&!liveWeather){
+    return cors({answer:'I could not retrieve current weather data for '+weatherPlace+'. I will not guess the conditions. Please try again shortly.',travel_data:{route:liveRoute,weather:null}});
+  }
+  if(route&&!liveRoute){
+    return cors({answer:'I could not retrieve a verified driving route for '+route.origin+' to '+route.destination+'. I will not guess the distance or travel time. Please try again shortly.',travel_data:{route:null,weather:liveWeather}});
+  }
 
   const liveContext=[
     liveRoute?'LIVE ROUTING DATA (OpenStreetMap/OSRM): '+JSON.stringify(liveRoute):'',
