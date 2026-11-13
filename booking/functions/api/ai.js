@@ -128,7 +128,7 @@ export async function onRequest(context){
   const route=extractRoute(message);
   const weatherRequested=wantsWeather(message);
   const weatherPlace=route?.destination||message
-    .replace(/.*?(?:weather|temperature|forecast|rain|rainfall|snow|mausam|मौसम|तापमान|बारिश|बर्फ)\\s*(?:in|at|for|of|का|में|की|like)?\\s*/i,'')
+    .replace(/.*?(?:weather|temperature|forecast|rain|rainfall|snow|mausam|मौसम|तापमान|बारिश|बर्फ)\s*(?:in|at|for|of|का|में|की|like)?\s*/i,'')
     .replace(/[?!.]+$/,'').trim();
 
   if(weatherRequested&&!weatherPlace){
