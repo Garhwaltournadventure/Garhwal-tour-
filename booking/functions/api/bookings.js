@@ -131,6 +131,7 @@ export async function onRequest(context){
  if(!env.DB)return json({error:'Database is not configured.'},503);
  const url=new URL(request.url), method=request.method;
  if(method==='POST'){
+  if(!await rateLimit(env.DB,request,'public-booking',5,10*60*1000))return corsJson({error:'Too many booking attempts. Please wait before trying again.'},429);
   let b;try{b=await request.json()}catch{return json({error:'Invalid JSON'},400)}
   if(!b.name||!b.phone||!b.service)return json({error:'Name, phone and service are required.'},400);
   const rec={id:id(),booking_ref:ref(),created_at:new Date().toISOString(),company:b.company||'Garhwal Tour N Adventure',cphone:b.cphone||'',cemail:b.cemail||'',msme:b.msme||'',name:b.name,phone:b.phone,email:b.email||'',idtype:b.idtype||'',idno:b.idno||'',service:b.service,date:b.date||'',pax:Number(b.pax||1),details:b.details||'',payment_note:b.paymentNote||'',status:'New',vehicle:'',driver:'',driver_phone:'',price:0,advance:0,received:0,paid:0,mode:'',paidto:'',gst:0,admin_note:''};
